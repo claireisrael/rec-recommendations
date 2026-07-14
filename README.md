@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# REC Recommendations & Actions
+
+A dual-purpose platform for the Renewable Energy Conference (REC) — a public guest portal and an internal admin portal for managing conference recommendations, actions, partners, and evidence.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 16 (App Router) |
+| Backend | Appwrite Client SDK (browser) |
+| Auth | Appwrite Email/Password |
+| Styling | Tailwind CSS v4 |
+| Forms | React Hook Form + Zod |
+| State | React Context + hooks |
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure Appwrite
+
+Follow the detailed setup guide: [docs/APPWRITE_SETUP.md](docs/APPWRITE_SETUP.md)
+
+```bash
+cp .env.example .env
+```
+
+Fill in your Appwrite endpoint, project, database, collection, and evidence bucket IDs.
+
+### 3. Run the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Landing page: [http://localhost:3000](http://localhost:3000)
+- Guest dashboard: [http://localhost:3000/guest](http://localhost:3000/guest)
+- Admin login: [http://localhost:3000/login](http://localhost:3000/login)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/
+│   ├── (public)/          # Landing + guest dashboard
+│   ├── (dashboard)/       # Admin portal (client AuthGuard)
+│   │   └── admin/
+│   │       ├── page.tsx           # Recommendations list
+│   │       ├── new/page.tsx       # Create form
+│   │       └── [id]/
+│   │           ├── page.tsx       # Detail view
+│   │           └── edit/page.tsx  # Edit form
+│   └── login/             # Admin login
+├── components/
+│   ├── admin/             # Admin UI
+│   ├── public/            # Landing + guest UI
+│   ├── brand/             # NREP logo
+│   ├── providers/         # Appwrite / auth provider
+│   └── ui/                # Shared primitives
+└── lib/
+    ├── appwrite/          # Client SDK services
+    ├── hooks/             # Auth, idle logout, filters
+    ├── schemas/           # Zod forms
+    └── types/             # Shared types
+```
 
-## Learn More
+## Brand Colors
 
-To learn more about Next.js, take a look at the following resources:
+| Color | Hex | Usage |
+|-------|-----|-------|
+| Primary (Deep Teal) | `#0B7186` | Headers, nav, buttons, links |
+| Secondary (Warm Gold) | `#FFB803` | Scores, badges, accents |
+| Font | Poppins (300–800) | All typography |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Security
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+All security is enforced at the Appwrite Collection Permission level:
 
-## Deploy on Vercel
+- **Read**: `Any` — public guest access
+- **Create/Update/Delete**: `users` — authenticated admins only
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+No API routes or Server Actions are used for database writes. Admin screens are protected by a client-side auth guard; sessions expire after 20 minutes of inactivity.
