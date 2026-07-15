@@ -1,5 +1,17 @@
 import { parseActionPartners } from "@/lib/partners";
 
+/**
+ * Action scoring — REC Recommendations scale (Appwrite `actionScores` enum).
+ * Same bands for contributor, L1 reviewer, and superadmin.
+ *
+ *   0–29     Poor
+ *  30–49     Fair
+ *  50–64     Average
+ *  65–74     Good
+ *  75–84     Very Good
+ *  85–94     Excellent
+ *  95–100    Exceptional
+ */
 export type ScoreTierKey =
   | "poor"
   | "fair"
@@ -12,20 +24,79 @@ export type ScoreTierKey =
 export interface ScoreTier {
   key: ScoreTierKey;
   label: string;
+  min: number;
+  max: number;
   color: string;
   bgColor: string;
-  /** Exact score for this tier (display, averages, gauges) */
+  /** Representative value for averages / gauges */
   value: number;
 }
 
 export const SCORE_TIERS: ScoreTier[] = [
-  { key: "poor", label: "Poor", color: "#DC2626", bgColor: "#FEE2E2", value: 40 },
-  { key: "fair", label: "Fair", color: "#EA580C", bgColor: "#FFEDD5", value: 50 },
-  { key: "average", label: "Average", color: "#CA8A04", bgColor: "#FEF9C3", value: 65 },
-  { key: "good", label: "Good", color: "#16A34A", bgColor: "#DCFCE7", value: 75 },
-  { key: "very_good", label: "Very Good", color: "#0B7186", bgColor: "#E0F2F7", value: 85 },
-  { key: "excellent", label: "Excellent", color: "#0891B2", bgColor: "#CFFAFE", value: 95 },
-  { key: "exceptional", label: "Exceptional", color: "#B45309", bgColor: "#FFB803", value: 100 },
+  {
+    key: "poor",
+    label: "Poor",
+    min: 0,
+    max: 29,
+    color: "#DC2626",
+    bgColor: "#FEE2E2",
+    value: 15,
+  },
+  {
+    key: "fair",
+    label: "Fair",
+    min: 30,
+    max: 49,
+    color: "#D97706",
+    bgColor: "#FEF3C7",
+    value: 40,
+  },
+  {
+    key: "average",
+    label: "Average",
+    min: 50,
+    max: 64,
+    /** Brand secondary — same orange as R chips / UI accents */
+    color: "#FFB803",
+    bgColor: "#FFF8E1",
+    value: 57,
+  },
+  {
+    key: "good",
+    label: "Good",
+    min: 65,
+    max: 74,
+    color: "#054653",
+    bgColor: "#E8F4F6",
+    value: 70,
+  },
+  {
+    key: "very_good",
+    label: "Very Good",
+    min: 75,
+    max: 84,
+    color: "#0B7186",
+    bgColor: "#E0F2F7",
+    value: 80,
+  },
+  {
+    key: "excellent",
+    label: "Excellent",
+    min: 85,
+    max: 94,
+    color: "#0891B2",
+    bgColor: "#CFFAFE",
+    value: 90,
+  },
+  {
+    key: "exceptional",
+    label: "Exceptional",
+    min: 95,
+    max: 100,
+    color: "#6D28D9",
+    bgColor: "#EDE9FE",
+    value: 98,
+  },
 ];
 
 export const SCORE_TIER_KEYS = [
@@ -38,58 +109,83 @@ export const SCORE_TIER_KEYS = [
   "exceptional",
 ] as const satisfies readonly ScoreTierKey[];
 
-export const DEFAULT_TIER = SCORE_TIERS[2];
+/** All selectable ratings — identical for form, L1, and superadmin. */
+export const SELECTABLE_SCORE_TIERS = SCORE_TIERS;
 
-export const SCORE_TIER_OPTIONS = SCORE_TIERS.map((tier) => ({
+export const DEFAULT_TIER = SCORE_TIERS[2]; // Average 50–64
+
+export function formatScoreRange(tier: ScoreTier): string {
+  return `${tier.min}–${tier.max}`;
+}
+
+export const SCORE_TIER_OPTIONS = SELECTABLE_SCORE_TIERS.map((tier) => ({
   value: tier.key,
-  label: `${tier.value} · ${tier.label}`,
+  label: `${formatScoreRange(tier)} · ${tier.label}`,
 }));
 
 export function getTierByKey(key: ScoreTierKey): ScoreTier {
   return SCORE_TIERS.find((t) => t.key === key) ?? DEFAULT_TIER;
 }
 
-function closestTierByValue(num: number): ScoreTier {
-  return SCORE_TIERS.reduce((closest, tier) =>
-    Math.abs(tier.value - num) < Math.abs(closest.value - num) ? tier : closest
+/** Normalize stored / drifted values to a REC enum key. */
+export function toScoreTierKey(raw: string | number): ScoreTierKey {
+  return resolveScoreTier(raw).key;
+}
+
+/** Map a percent into its REC band. */
+export function tierFromScore(num: number): ScoreTier {
+  const clamped = Math.max(0, Math.min(100, Math.round(num)));
+  return (
+    SCORE_TIERS.find((t) => clamped >= t.min && clamped <= t.max) ??
+    DEFAULT_TIER
   );
 }
 
-/** Resolve tier from Appwrite value — supports tier keys or legacy integers. */
+/**
+ * Resolve tier from Appwrite — REC keys, temporary Matrix drift keys, or integers.
+ */
 export function resolveScoreTier(raw: string | number): ScoreTier {
-  if (typeof raw === "string" && SCORE_TIER_KEYS.includes(raw as ScoreTierKey)) {
-    return getTierByKey(raw as ScoreTierKey);
+  if (typeof raw === "string") {
+    const normalized = raw.trim();
+    if (SCORE_TIER_KEYS.includes(normalized as ScoreTierKey)) {
+      return getTierByKey(normalized as ScoreTierKey);
+    }
+    // Temporary Matrix-band keys → nearest REC band (do not invent new scales)
+    if (normalized === "very_poor") return getTierByKey("poor");
   }
 
   const num = typeof raw === "number" ? raw : Number(raw);
   if (!Number.isNaN(num)) {
-    const exact = SCORE_TIERS.find((t) => t.value === num);
-    if (exact) return exact;
-    return closestTierByValue(Math.max(40, Math.min(100, Math.round(num))));
+    return tierFromScore(num);
   }
 
   return DEFAULT_TIER;
 }
 
-export function getScoreColor(tierOrKey: ScoreTierKey | number): string {
-  if (typeof tierOrKey === "string") return getTierByKey(tierOrKey).color;
-  return resolveScoreTier(tierOrKey).color;
+export function getScoreColor(tierOrKey: ScoreTierKey | number | string): string {
+  return resolveScoreTier(tierOrKey as string | number).color;
 }
 
-export function getScoreLabel(tierOrKey: ScoreTierKey | number): string {
-  if (typeof tierOrKey === "string") return getTierByKey(tierOrKey).label;
-  return resolveScoreTier(tierOrKey).label;
+export function getScoreLabel(tierOrKey: ScoreTierKey | number | string): string {
+  return resolveScoreTier(tierOrKey as string | number).label;
 }
 
-/** Average score across action tier ratings (for summary gauges). */
+export function getScoreBgColor(tierOrKey: ScoreTierKey | number | string): string {
+  return resolveScoreTier(tierOrKey as string | number).bgColor;
+}
+
+/** Average score across action tier ratings (representative values, capped 0–100). */
 export function averageActionScore(
-  actions: { scoreTier: ScoreTierKey }[]
+  actions: { scoreTier: ScoreTierKey | string }[]
 ): number {
   if (actions.length === 0) return 0;
-  return Math.round(
-    actions.reduce((sum, a) => sum + getTierByKey(a.scoreTier).value, 0) /
-      actions.length
+  const avg = Math.round(
+    actions.reduce(
+      (sum, a) => sum + resolveScoreTier(a.scoreTier).value,
+      0
+    ) / actions.length
   );
+  return Math.max(0, Math.min(100, avg));
 }
 
 export function countUniqueActionPartners(

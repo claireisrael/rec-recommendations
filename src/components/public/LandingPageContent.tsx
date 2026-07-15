@@ -33,7 +33,7 @@ export function LandingPageContent({
       </div>
 
       {/* Info panel — torn clip on the split edge reveals photos underneath */}
-      <div className="landing-panel-info relative z-10 order-1 flex flex-col justify-between w-full lg:w-[48%] xl:w-[45%] min-h-[55vh] lg:min-h-screen bg-gradient-to-br from-[#032a31] via-primary-dark to-primary px-8 sm:px-12 lg:px-14 xl:px-20 py-10 lg:py-12">
+      <div className="landing-panel-info relative z-10 order-1 flex flex-col justify-between w-full lg:w-[48%] xl:w-[45%] min-h-[55vh] lg:min-h-screen bg-gradient-to-br from-[#033540] via-primary-dark to-primary px-8 sm:px-12 lg:px-14 xl:px-20 py-10 lg:py-12">
         <div
           className="absolute inset-0 overflow-hidden pointer-events-none"
           aria-hidden
@@ -63,16 +63,16 @@ export function LandingPageContent({
           </h1>
 
           <p className="landing-body text-base sm:text-lg font-medium leading-relaxed max-w-md mb-10">
-            Explore REC recommendations and the actions behind them — with
-            action implementation partners and status tracked across each
-            conference year.
+            Follow every REC recommendation through to delivery — who is
+            advancing it, the organisations behind each action, and progress
+            across conference years.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4">
             <Link href="/guest" className="group">
               <Button
                 size="lg"
-                className="w-full sm:w-auto h-12 px-8 bg-secondary text-foreground hover:bg-secondary-dark font-semibold shadow-lg shadow-secondary/20 transition-all duration-300 group-hover:scale-[1.03]"
+                className="w-full sm:w-auto h-12 px-8 bg-secondary text-white hover:bg-secondary-dark font-semibold shadow-lg shadow-secondary/20 transition-all duration-300 group-hover:scale-[1.03]"
               >
                 <LayoutDashboard className="h-5 w-5" />
                 Guest Dashboard

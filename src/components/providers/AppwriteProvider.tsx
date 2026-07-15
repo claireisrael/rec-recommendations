@@ -14,7 +14,7 @@ export function AppwriteProvider({ children }: { children: ReactNode }) {
         closeButton
         toastOptions={{
           style: {
-            fontFamily: "var(--font-poppins)",
+            fontFamily: "var(--font-sans)",
           },
         }}
       />

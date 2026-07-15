@@ -1,8 +1,20 @@
 import { Query } from "appwrite";
-import { getDatabases, createServerClient, isAppwriteConfigured } from "./client";
+import { getAccount, getDatabases, createServerClient, isAppwriteConfigured } from "./client";
 import { appwriteConfig } from "./config";
-import { countUniqueActionPartners, DEFAULT_TIER, resolveScoreTier, getTierByKey } from "@/lib/score";
+import {
+  countUniqueActionPartners,
+  DEFAULT_TIER,
+  resolveScoreTier,
+  toScoreTierKey,
+} from "@/lib/score";
 import { parseActionEvidence, serializeActionEvidence } from "@/lib/evidence";
+import { resolveCategory } from "@/lib/categories";
+import {
+  createActionId,
+  defaultActionReviewMeta,
+  parseActionReview,
+  serializeActionReview,
+} from "@/lib/action-review";
 import type {
   Recommendation,
   RecommendationInput,
@@ -10,6 +22,7 @@ import type {
   RecommendationStatus,
   YearStats,
   GlobalStats,
+  ActionItem,
 } from "@/lib/types/recommendation";
 
 const { databaseId, collectionId } = appwriteConfig;
@@ -38,6 +51,7 @@ function normalizeDocument(raw: RecommendationDocument): Recommendation {
   const scores = raw.actionScores ?? [];
   const partners = raw.actionPartners ?? [];
   const evidence = raw.actionEvidence ?? [];
+  const reviews = raw.actionReviews ?? [];
   return {
     $id: raw.$id,
     $sequence: raw.$sequence,
@@ -48,12 +62,21 @@ function normalizeDocument(raw: RecommendationDocument): Recommendation {
     $permissions: raw.$permissions,
     recommendation: raw.recommendations,
     year: raw["rec-year"],
-    actions: texts.map((text, i) => ({
-      text,
-      scoreTier: resolveScoreTier(scores[i] ?? DEFAULT_TIER.key).key,
-      partner: partners[i] ?? "",
-      evidence: parseActionEvidence(evidence[i]),
-    })),
+    category: resolveCategory(raw.category ?? raw.comments),
+    sectionCode: raw.sectionCode || undefined,
+    actions: texts.map((text, i) => {
+      const review = parseActionReview(reviews[i]);
+      // Stable across reloads so L1/superadmin approve can find the row
+      const id = review.id || `action-${raw.$id}-${i}`;
+      return {
+        id,
+        text,
+        scoreTier: toScoreTierKey(scores[i] ?? DEFAULT_TIER.key),
+        partner: partners[i] ?? "",
+        evidence: parseActionEvidence(evidence[i]),
+        review: { ...review, id },
+      } satisfies ActionItem;
+    }),
     comments: raw.comments,
     status: fromAppwriteStatus(raw.status),
   };
@@ -70,6 +93,12 @@ function toAppwritePayload(
   if (data.year !== undefined) {
     payload["rec-year"] = data.year;
   }
+  if (data.category !== undefined) {
+    payload.category = data.category;
+  }
+  if (data.sectionCode !== undefined) {
+    payload.sectionCode = data.sectionCode || "";
+  }
   if (data.comments !== undefined) {
     payload.comments = data.comments;
   }
@@ -82,6 +111,13 @@ function toAppwritePayload(
     payload.actionPartners = data.actions.map((a) => a.partner);
     payload.actionEvidence = data.actions.map((a) =>
       serializeActionEvidence(a.evidence ?? [])
+    );
+    payload.actionReviews = data.actions.map((a) =>
+      serializeActionReview(
+        a.review?.id
+          ? a.review
+          : defaultActionReviewMeta({ id: a.id || createActionId() })
+      )
     );
   }
 
@@ -150,11 +186,31 @@ export async function updateRecommendation(
   id: string,
   data: Partial<RecommendationInput>
 ): Promise<Recommendation> {
+  const payload = toAppwritePayload(data);
+
+  if (typeof window !== "undefined") {
+    const jwt = await getAccount().createJWT();
+    const res = await fetch(`/api/admin/recommendations/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Appwrite-JWT": jwt.jwt,
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { message?: string };
+      throw new Error(body.message || `Failed to update (${res.status})`);
+    }
+    const raw = await res.json();
+    return normalizeDocument(raw as RecommendationDocument);
+  }
+
   const doc = await getDatabases().updateDocument<RecommendationDocument>(
     databaseId,
     collectionId,
     id,
-    toAppwritePayload(data) as Partial<
+    payload as Partial<
       Omit<RecommendationDocument, keyof import("appwrite").Models.Document>
     >
   );
@@ -162,6 +218,26 @@ export async function updateRecommendation(
 }
 
 export async function deleteRecommendation(id: string): Promise<void> {
+  // Prefer server delete (API key) so Appwrite is always updated, even when
+  // document permissions would block the browser session.
+  if (typeof window !== "undefined") {
+    const jwt = await getAccount().createJWT();
+    const res = await fetch(`/api/admin/recommendations/${id}`, {
+      method: "DELETE",
+      headers: {
+        "X-Appwrite-JWT": jwt.jwt,
+      },
+    });
+
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { message?: string };
+      throw new Error(body.message || `Failed to delete (${res.status})`);
+    }
+    return;
+  }
+
+  // Server-side fallback (scripts / RSC) — needs API key on env via REST path
+  // or the Appwrite client without a user session will fail. Prefer scripts.
   await getDatabases().deleteDocument(databaseId, collectionId, id);
 }
 
@@ -184,7 +260,7 @@ export async function getStatsByYear(
   const recommendations = await getRecommendations({ year }, serverSide);
 
   const allActionScores = recommendations.flatMap((r) =>
-    r.actions.map((a) => getTierByKey(a.scoreTier).value)
+    r.actions.map((a) => resolveScoreTier(a.scoreTier).value)
   );
   const averageScore =
     allActionScores.length > 0
@@ -207,7 +283,7 @@ export async function getGlobalStats(
   const recommendations = await getRecommendations({}, serverSide);
 
   const allActionScores = recommendations.flatMap((r) =>
-    r.actions.map((a) => getTierByKey(a.scoreTier).value)
+    r.actions.map((a) => resolveScoreTier(a.scoreTier).value)
   );
   const years = recommendations.map((r) => r.year);
   const averageScore =

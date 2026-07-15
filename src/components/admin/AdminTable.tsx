@@ -1,18 +1,32 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import type { Recommendation } from "@/lib/types/recommendation";
 import { STATUS_LABELS, RECOMMENDATION_STATUSES } from "@/lib/types/recommendation";
-import { getScoreColor, averageActionScore, resolveScoreTier } from "@/lib/score";
-import { ScoreBadge } from "@/components/ui/score-badge";
+import { averageActionScore } from "@/lib/score";
 import { ActionEvidenceDisplay } from "@/components/ui/action-evidence";
 import { hasEvidence } from "@/lib/evidence";
 import { getRecommendationPartners } from "@/lib/partners";
+import { PartnersList } from "@/components/ui/action-partners";
 import { StatusBadge } from "./StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  CATEGORY_OPTIONS,
+  RECOMMENDATION_CATEGORIES,
+  type RecommendationCategory,
+} from "@/lib/categories";
+import {
+  buildRecommendationNumbering,
+  getCategoryCode,
+  getCategorySectionIndex,
+  type RecommendationNumbering,
+} from "@/lib/numbering";
+import { NumberCode } from "@/components/ui/number-code";
+import { CategoryNumberKey } from "@/components/admin/CategoryNumberKey";
 import {
   Pencil,
   Trash2,
@@ -29,23 +43,79 @@ interface AdminTableProps {
   recommendations: Recommendation[];
   loading: boolean;
   onDelete: (id: string) => void;
+  /** When set, edit only shown for items the user may change */
+  canEditItem?: (rec: Recommendation, code?: string) => boolean;
+  /** When set, delete only shown for items the user may delete */
+  canDeleteItem?: (rec: Recommendation, code?: string) => boolean;
 }
 
 const PAGE_SIZE = 10;
 type ViewMode = "table" | "cards";
+type SortField = "number" | "recommendation" | "year" | "score";
 
 export function AdminTable({
   recommendations,
   loading,
   onDelete,
+  canEditItem,
+  canDeleteItem,
 }: AdminTableProps) {
+  const searchParams = useSearchParams();
+  const categoryFromUrl = searchParams.get("category") || "";
+
   const [search, setSearch] = useState("");
   const [yearFilter, setYearFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState(categoryFromUrl);
   const [page, setPage] = useState(0);
-  const [sortField, setSortField] = useState<"recommendation" | "year" | "score">("year");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortField, setSortField] = useState<SortField>("number");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [viewMode, setViewMode] = useState<ViewMode>("table");
+
+  useEffect(() => {
+    if (
+      categoryFromUrl &&
+      RECOMMENDATION_CATEGORIES.includes(
+        categoryFromUrl as RecommendationCategory
+      )
+    ) {
+      setCategoryFilter(categoryFromUrl);
+      setPage(0);
+    }
+  }, [categoryFromUrl]);
+
+  const numbering = useMemo(() => {
+    const map = new Map<string, RecommendationNumbering>();
+    const byYear = new Map<number, Recommendation[]>();
+    for (const rec of recommendations) {
+      const list = byYear.get(rec.year) ?? [];
+      list.push(rec);
+      byYear.set(rec.year, list);
+    }
+    for (const yearRecs of byYear.values()) {
+      const yearMap = buildRecommendationNumbering(yearRecs);
+      for (const [id, info] of yearMap) map.set(id, info);
+    }
+    return map;
+  }, [recommendations]);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Partial<Record<RecommendationCategory, number>> = {};
+    const source = yearFilter
+      ? recommendations.filter((r) => r.year === Number(yearFilter))
+      : recommendations;
+    for (const rec of source) {
+      const key = rec.category as RecommendationCategory;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    return counts;
+  }, [recommendations, yearFilter]);
+
+  const availableCategories = useMemo(
+    () =>
+      RECOMMENDATION_CATEGORIES.filter((c) => (categoryCounts[c] ?? 0) > 0),
+    [categoryCounts]
+  );
 
   const years = useMemo(
     () =>
@@ -59,8 +129,17 @@ export function AdminTable({
     let result = [...recommendations];
 
     if (search) {
-      const q = search.toLowerCase();
-      result = result.filter((r) => r.recommendation.toLowerCase().includes(q));
+      const q = search.toLowerCase().replace(/\s+/g, "");
+      result = result.filter((r) => {
+        const code = (numbering.get(r.$id)?.code ?? "").toLowerCase();
+        const cat = (numbering.get(r.$id)?.categoryCode ?? "").toLowerCase();
+        return (
+          r.recommendation.toLowerCase().includes(search.toLowerCase()) ||
+          code.includes(q) ||
+          cat.includes(q) ||
+          code.replace(/^r/, "").includes(q.replace(/^r/, ""))
+        );
+      });
     }
     if (yearFilter) {
       result = result.filter((r) => r.year === Number(yearFilter));
@@ -68,8 +147,27 @@ export function AdminTable({
     if (statusFilter) {
       result = result.filter((r) => r.status === statusFilter);
     }
+    if (categoryFilter) {
+      result = result.filter(
+        (r) => r.category === (categoryFilter as RecommendationCategory)
+      );
+    }
 
     result.sort((a, b) => {
+      if (sortField === "number") {
+        const na = numbering.get(a.$id);
+        const nb = numbering.get(b.$id);
+        const yearCmp = a.year - b.year;
+        // Prefer newer years first when year differs and sorting by number? 
+        // Keep year as secondary; primary is category index then item
+        const catA = na ? getCategorySectionIndex(na.category) : 999;
+        const catB = nb ? getCategorySectionIndex(nb.category) : 999;
+        const itemA = na?.itemIndex ?? 999;
+        const itemB = nb?.itemIndex ?? 999;
+        const cmp = yearCmp !== 0 ? yearCmp : catA - catB || itemA - itemB;
+        return sortDir === "asc" ? cmp : -cmp;
+      }
+
       const getVal = (rec: Recommendation) =>
         sortField === "score"
           ? averageActionScore(rec.actions)
@@ -84,17 +182,26 @@ export function AdminTable({
     });
 
     return result;
-  }, [recommendations, search, yearFilter, statusFilter, sortField, sortDir]);
+  }, [
+    recommendations,
+    search,
+    yearFilter,
+    statusFilter,
+    categoryFilter,
+    sortField,
+    sortDir,
+    numbering,
+  ]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
-  const handleSort = (field: typeof sortField) => {
+  const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortField(field);
-      setSortDir("desc");
+      setSortDir(field === "number" ? "asc" : "desc");
     }
   };
 
@@ -109,68 +216,87 @@ export function AdminTable({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <div className="flex flex-col sm:flex-row gap-3 flex-1">
-        <Input
-          placeholder="Search recommendations..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(0);
-          }}
-          className="sm:max-w-xs"
-        />
-        <Select
-          value={yearFilter}
-          onChange={(v) => {
-            setYearFilter(v);
-            setPage(0);
-          }}
-          options={years.map((y) => ({ value: y, label: y }))}
-          placeholder="All Years"
-          className="sm:w-36"
-        />
-        <Select
-          value={statusFilter}
-          onChange={(v) => {
-            setStatusFilter(v);
-            setPage(0);
-          }}
-          options={[
-            { value: "", label: "All statuses" },
-            ...RECOMMENDATION_STATUSES.map((value) => ({
-              value,
-              label: STATUS_LABELS[value],
-            })),
-          ]}
-          placeholder="All Statuses"
-          className="sm:w-40"
-        />
-        </div>
-        <div className="flex rounded-lg border border-border p-0.5 shrink-0">
-          <Button
-            type="button"
-            variant={viewMode === "table" ? "default" : "ghost"}
-            size="sm"
-            className="gap-1.5"
-            onClick={() => setViewMode("table")}
-            aria-pressed={viewMode === "table"}
-          >
-            <Table2 className="h-4 w-4" />
-            Table
-          </Button>
-          <Button
-            type="button"
-            variant={viewMode === "cards" ? "default" : "ghost"}
-            size="sm"
-            className="gap-1.5"
-            onClick={() => setViewMode("cards")}
-            aria-pressed={viewMode === "cards"}
-          >
-            <LayoutGrid className="h-4 w-4" />
-            Cards
-          </Button>
+    <div className="space-y-5">
+      <CategoryNumberKey
+        availableCategories={availableCategories}
+        categoryCounts={categoryCounts}
+        selectedCategory={categoryFilter}
+        onSelectCategory={(cat) => {
+          setCategoryFilter(cat);
+          setPage(0);
+        }}
+      />
+
+      <div className="rounded-2xl border border-[#dce6e9]/70 bg-white/80 p-3.5 shadow-[0_1px_6px_rgba(5,70,83,0.03)] sm:p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="grid min-w-0 flex-1 grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+            <Input
+              placeholder="Search by text or ref…"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(0);
+              }}
+              className="rounded-xl border-[#d5e2e5] bg-[#f7fafb] placeholder:text-[#9aafb6]"
+            />
+            <Select
+              value={yearFilter}
+              onChange={(v) => {
+                setYearFilter(v);
+                setPage(0);
+              }}
+              options={years.map((y) => ({ value: y, label: y }))}
+              placeholder="All Years"
+            />
+            <Select
+              value={statusFilter}
+              onChange={(v) => {
+                setStatusFilter(v);
+                setPage(0);
+              }}
+              options={RECOMMENDATION_STATUSES.map((value) => ({
+                value,
+                label: STATUS_LABELS[value],
+              }))}
+              placeholder="All Statuses"
+            />
+            <Select
+              value={categoryFilter}
+              onChange={(v) => {
+                setCategoryFilter(v);
+                setPage(0);
+              }}
+              options={CATEGORY_OPTIONS.map((o) => ({
+                value: o.value,
+                label: `${getCategoryCode(o.value)} · ${o.label}`,
+              }))}
+              placeholder="All Categories"
+            />
+          </div>
+          <div className="flex shrink-0 self-start rounded-full border border-primary/10 bg-[#f8fafb] p-0.5">
+            <Button
+              type="button"
+              variant={viewMode === "table" ? "default" : "ghost"}
+              size="sm"
+              className="gap-1.5 rounded-full"
+              onClick={() => setViewMode("table")}
+              aria-pressed={viewMode === "table"}
+            >
+              <Table2 className="h-4 w-4" />
+              Table
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === "cards" ? "default" : "ghost"}
+              size="sm"
+              className="gap-1.5 rounded-full"
+              onClick={() => setViewMode("cards")}
+              aria-pressed={viewMode === "cards"}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Cards
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -181,47 +307,61 @@ export function AdminTable({
           </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {paginated.map((rec) => (
+            {paginated.map((rec) => {
+              const code = numbering.get(rec.$id)?.code;
+              const editable = canEditItem
+                ? canEditItem(rec, code)
+                : true;
+              const deletable = canDeleteItem
+                ? canDeleteItem(rec, code)
+                : editable;
+              return (
               <AdminRecommendationCard
                 key={rec.$id}
                 recommendation={rec}
+                numberCode={code}
                 onDelete={onDelete}
+                canEdit={editable}
+                canDelete={deletable}
               />
-            ))}
+            );
+            })}
           </div>
         )
       ) : (
-      <div className="overflow-x-auto rounded-xl border border-border">
+      <div className="overflow-hidden rounded-xl border border-[#dee2e6] bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-primary/5 border-b border-border">
-              {(
-                [
-                  ["recommendation", "Recommendation"],
-                  ["year", "Year"],
-                  ["score", "Score"],
-                ] as const
-              ).map(([field, label]) => (
-                <th
-                  key={field}
-                  className="text-left px-4 py-3 font-semibold text-primary cursor-pointer hover:bg-primary/10 transition-colors"
-                  onClick={() => handleSort(field)}
-                >
-                  {label}
-                  {sortField === field && (
-                    <span className="ml-1 text-secondary">
-                      {sortDir === "asc" ? "↑" : "↓"}
-                    </span>
-                  )}
-                </th>
-              ))}
-              <th className="text-left px-4 py-3 font-semibold text-primary">
+            <tr className="border-b-2 border-[#dee2e6] bg-[#f8f9fa]">
+              <th
+                className="cursor-pointer whitespace-nowrap px-4 py-4 text-left text-sm font-semibold text-primary transition-colors hover:text-primary-dark"
+                onClick={() => handleSort("number")}
+              >
+                Ref
+                {sortField === "number" && (
+                  <span className="ml-1 text-secondary-dark">
+                    {sortDir === "asc" ? "↑" : "↓"}
+                  </span>
+                )}
+              </th>
+              <th
+                className="cursor-pointer px-4 py-4 text-left text-sm font-semibold text-primary transition-colors hover:text-primary-dark"
+                onClick={() => handleSort("recommendation")}
+              >
+                Recommendation
+                {sortField === "recommendation" && (
+                  <span className="ml-1 text-secondary-dark">
+                    {sortDir === "asc" ? "↑" : "↓"}
+                  </span>
+                )}
+              </th>
+              <th className="px-4 py-4 text-left text-sm font-semibold text-primary">
                 Implementation Partners
               </th>
-              <th className="text-left px-4 py-3 font-semibold text-primary">
+              <th className="px-4 py-4 text-left text-sm font-semibold text-primary">
                 Status
               </th>
-              <th className="text-right px-4 py-3 font-semibold text-primary">
+              <th className="px-4 py-4 text-center text-sm font-semibold text-primary">
                 Actions
               </th>
             </tr>
@@ -230,84 +370,106 @@ export function AdminTable({
             {paginated.length === 0 ? (
               <tr>
                 <td
-                  colSpan={6}
-                  className="text-center py-12 text-muted font-light"
+                  colSpan={5}
+                  className="py-12 text-center font-light text-muted"
                 >
                   No recommendations found
                 </td>
               </tr>
             ) : (
               paginated.map((rec) => {
-                const overallScore = averageActionScore(rec.actions);
                 const partners = getRecommendationPartners(rec.actions);
+                const code = numbering.get(rec.$id)?.code;
                 return (
                 <tr
                   key={rec.$id}
-                  className="border-b border-border last:border-0 hover:bg-gray-50/50 transition-colors"
+                  className="border-b border-[#f1f3f4] last:border-0 transition-colors hover:bg-[rgba(5,70,83,0.02)]"
                 >
-                  <td className="px-4 py-3 max-w-xs">
-                    <p className="font-medium text-gray-800 truncate">
-                      {rec.recommendation}
-                    </p>
-                    {(() => {
-                      const evidenceItems = rec.actions.flatMap(
-                        (a) => a.evidence ?? []
-                      );
-                      return hasEvidence(evidenceItems) ? (
-                        <div className="mt-1">
-                          <ActionEvidenceDisplay evidence={evidenceItems} />
-                        </div>
-                      ) : null;
-                    })()}
-                  </td>
-                  <td className="px-4 py-3 text-muted">{rec.year}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-1">
-                      <span
-                        className="inline-flex items-center gap-1.5 font-semibold"
-                        style={{ color: getScoreColor(overallScore) }}
-                      >
-                        <span
-                          className="w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: getScoreColor(overallScore) }}
-                        />
-                        {overallScore}
-                      </span>
-                      <ScoreBadge scoreTier={resolveScoreTier(overallScore).key} showValue size="sm" />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-muted max-w-xs">
-                    {partners.length > 0 ? (
-                      <p className="text-sm text-gray-700 break-words">
-                        {partners.join(", ")}
-                      </p>
+                  <td className="whitespace-nowrap px-4 py-4 align-middle">
+                    {code ? (
+                      <NumberCode code={code} size="md" />
                     ) : (
-                      <span className="text-xs italic">—</span>
+                      <span className="text-muted">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="max-w-md px-4 py-4 align-middle">
+                    <p className="line-clamp-2 text-sm font-medium leading-snug text-[#1f2937]">
+                      {rec.recommendation}
+                    </p>
+                    {rec.actions.length > 1 ? (
+                      <p className="mt-1 text-xs text-muted">
+                        {rec.actions.length} actions · view for details
+                      </p>
+                    ) : (
+                      (() => {
+                        const evidenceItems = rec.actions.flatMap(
+                          (a) => a.evidence ?? []
+                        );
+                        return hasEvidence(evidenceItems) ? (
+                          <div className="mt-1">
+                            <ActionEvidenceDisplay evidence={evidenceItems} />
+                          </div>
+                        ) : null;
+                      })()
+                    )}
+                  </td>
+                  <td className="max-w-sm px-4 py-4 align-middle">
+                    {partners.length > 0 ? (
+                      <PartnersList
+                        partners={partners}
+                        showLabel={false}
+                        size="sm"
+                      />
+                    ) : (
+                      <span className="text-xs italic text-muted">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-4 align-middle">
                     <StatusBadge status={rec.status} />
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
+                  <td className="px-4 py-4 align-middle">
+                    <div className="flex items-center justify-center gap-2">
                       <Link href={`/admin/${rec.$id}`}>
-                        <Button variant="ghost" size="icon" title="View">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          title="View"
+                          className="h-9 w-9 rounded-md border-[#0b7186] text-[#0b7186] hover:bg-[#0b7186]/10"
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
                       </Link>
-                      <Link href={`/admin/${rec.$id}/edit`}>
-                        <Button variant="ghost" size="icon" title="Edit">
-                          <Pencil className="h-4 w-4" />
+                      {(canEditItem ? canEditItem(rec, code) : true) && (
+                        <Link href={`/admin/${rec.$id}/edit`}>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            title="Edit"
+                            className="h-9 w-9 rounded-md border-[#2563eb] text-[#2563eb] hover:bg-[#2563eb]/10"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      )}
+                      {(canDeleteItem
+                        ? canDeleteItem(rec, code)
+                        : canEditItem
+                          ? canEditItem(rec, code)
+                          : true) && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          title="Delete"
+                          className="h-9 w-9 rounded-md border-red-500 text-red-500 hover:bg-red-50"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onDelete(rec.$id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Delete"
-                        onClick={() => onDelete(rec.$id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
+                      )}
                     </div>
                   </td>
                 </tr>

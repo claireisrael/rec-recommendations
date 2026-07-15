@@ -1,6 +1,7 @@
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Inter } from "next/font/google";
 
-export const landingFont = Plus_Jakarta_Sans({
+/** Landing body text — Inter, matching NREP-HR-project. */
+export const landingFont = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
   display: "swap",

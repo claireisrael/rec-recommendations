@@ -4,52 +4,102 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   getRecommendationById,
+  getRecommendations,
   updateRecommendation,
 } from "@/lib/appwrite/database";
 import { formatAppwriteError, isAuthError } from "@/lib/appwrite/errors";
+import { revalidateGuestPortal } from "@/lib/revalidate-guest";
 import type { Recommendation } from "@/lib/types/recommendation";
 import { formatActionPartners } from "@/lib/partners";
 import { RecommendationForm } from "@/components/admin/RecommendationForm";
 import { AdminPageContent } from "@/components/admin/AdminPageContent";
 import type { RecommendationFormData } from "@/lib/schemas/recommendation";
+import { finalizeActions } from "@/lib/schemas/recommendation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { buildRecommendationNumbering } from "@/lib/numbering";
+import { canEditRecommendation } from "@/lib/recommendation-assignees";
 
 export default function EditRecommendationPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const id = params.id as string;
   const [recommendation, setRecommendation] = useState<Recommendation | null>(
     null
   );
+  const [numberCode, setNumberCode] = useState<string | undefined>();
+  const [sectionCode, setSectionCode] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
 
   useEffect(() => {
-    getRecommendationById(id)
-      .then(setRecommendation)
-      .catch(() => toast.error("Failed to load recommendation"))
-      .finally(() => setLoading(false));
-  }, [id]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const rec = await getRecommendationById(id);
+        if (cancelled) return;
+        setRecommendation(rec);
+        const yearRecs = await getRecommendations({ year: rec.year });
+        if (cancelled) return;
+        const info = buildRecommendationNumbering(yearRecs).get(rec.$id);
+        const code = info?.code;
+        const section = info?.sectionCode || rec.sectionCode;
+        setNumberCode(code);
+        setSectionCode(section);
+        if (
+          user?.email &&
+          !canEditRecommendation(user.email, {
+            id: rec.$id,
+            code,
+            sectionCode: section,
+            category: rec.category,
+          })
+        ) {
+          setForbidden(true);
+        }
+      } catch {
+        if (!cancelled) toast.error("Failed to load recommendation");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, user?.email]);
 
   const handleSubmit = async (data: RecommendationFormData) => {
+    if (
+      !canEditRecommendation(user?.email, {
+        id,
+        code: numberCode,
+        sectionCode,
+        category: recommendation?.category,
+      })
+    ) {
+      toast.error("You can only edit recommendations in your assigned sections");
+      return;
+    }
     setIsSubmitting(true);
     try {
       const filtered = {
         ...data,
-        actions: data.actions
-          .filter((a) => a.text.trim())
-          .map((a) => ({
-            text: a.text.trim(),
-            scoreTier: a.scoreTier,
-            partner: formatActionPartners(a.partner),
-            evidence: (a.evidence ?? []).filter(Boolean),
-          })),
+        actions: finalizeActions(
+          data.actions,
+          recommendation?.actions ?? []
+        ).map((a) => ({
+          ...a,
+          partner: formatActionPartners(a.partner),
+        })),
       };
       await updateRecommendation(id, filtered);
+      await revalidateGuestPortal();
       toast.success("Recommendation updated successfully");
       router.push(`/admin/${id}`);
     } catch (err) {
@@ -75,14 +125,18 @@ export default function EditRecommendationPage() {
     );
   }
 
-  if (!recommendation) {
+  if (!recommendation || forbidden) {
     return (
       <AdminPageContent>
         <div className="text-center py-16">
-          <p className="text-muted">Recommendation not found</p>
-          <Link href="/admin">
+          <p className="text-muted">
+            {forbidden
+              ? "You can view this recommendation, but editing is limited to items assigned to you."
+              : "Recommendation not found"}
+          </p>
+          <Link href={forbidden ? `/admin/${id}` : "/admin"}>
             <Button variant="outline" className="mt-4">
-              Back to Dashboard
+              {forbidden ? "Back to recommendation" : "Back to Dashboard"}
             </Button>
           </Link>
         </div>
@@ -103,7 +157,9 @@ export default function EditRecommendationPage() {
           <h1 className="text-3xl font-bold text-primary">
             Edit Recommendation
           </h1>
-          <p className="text-muted font-light mt-1">{recommendation.recommendation}</p>
+          <p className="mt-1 text-sm font-medium text-foreground/80">
+            {recommendation.recommendation}
+          </p>
         </div>
       </div>
 

@@ -1,50 +1,89 @@
 "use client";
 
+import Link from "next/link";
 import type { Models } from "appwrite";
 import { getFirstName } from "@/lib/greeting";
-import { cn } from "@/lib/utils";
-import { HeartHandshake } from "lucide-react";
+import { listAssignedSectionsForEmail } from "@/lib/recommendation-assignees";
+import { categoryFromSectionCode } from "@/lib/numbering";
+import { CATEGORY_LABELS } from "@/lib/categories";
+import { NumberCode } from "@/components/ui/number-code";
+import { usePendingReviewCount } from "@/lib/hooks/usePendingReviewCount";
 
 interface DashboardGreetingProps {
   user: Pick<Models.User<Models.Preferences>, "name" | "email"> | null;
 }
 
+function timeGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+/**
+ * Greeting card styled like NREP-HR-project `.dash-welcome`
+ * (styles/dashboard.css): soft glass card + primary→secondary top bar.
+ */
 export function DashboardGreeting({ user }: DashboardGreetingProps) {
   const firstName = getFirstName(user);
+  const pendingReviews = usePendingReviewCount();
+  const sections = listAssignedSectionsForEmail(user?.email);
 
   return (
-    <div className="relative overflow-hidden border-b border-primary/10 shadow-[0_4px_24px_rgba(11,113,134,0.06)]">
-      <div
-        className="absolute inset-0 bg-gradient-to-r from-primary/12 via-secondary/15 to-white"
-        aria-hidden
-      />
-      <div
-        className="absolute -top-10 right-0 h-40 w-40 rounded-full bg-secondary/15 blur-3xl"
-        aria-hidden
-      />
-      <div
-        className="absolute -bottom-12 left-0 h-36 w-36 rounded-full bg-primary/10 blur-3xl"
-        aria-hidden
-      />
+    <div className="px-4 pt-5 sm:px-6 lg:px-8">
+      <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[1.25rem] border border-primary/[0.06] bg-gradient-to-br from-white/97 to-slate-50/92 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-[25px]">
+        <div className="accent-bar absolute inset-x-0 top-0 h-[3px]" />
 
-      <div className="relative flex items-start gap-4 px-6 py-6 sm:px-8 sm:py-7 lg:px-10">
-        <div
-          className={cn(
-            "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl shadow-sm",
-            "bg-secondary/20 text-secondary-dark"
+        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-6 sm:px-8">
+          <div>
+            <h1
+              className="m-0 text-[1.65rem] font-extrabold leading-tight sm:text-[1.85rem]"
+              style={{
+                background:
+                  "linear-gradient(135deg, #054653 0%, #0b7186 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              {timeGreeting()}, {firstName}
+            </h1>
+            <p className="mt-1 text-sm font-medium text-muted">
+              REC Recommendations & Actions
+            </p>
+
+            {sections.length > 0 && (
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {sections.map((section) => {
+                  const cat = categoryFromSectionCode(section);
+                  const label = cat ? CATEGORY_LABELS[cat] : section;
+                  return (
+                    <li
+                      key={section}
+                      className="inline-flex items-center gap-2 rounded-full border border-[rgba(5,70,83,0.08)] bg-white px-2.5 py-1"
+                    >
+                      <NumberCode code={section} size="sm" />
+                      <span className="text-xs font-medium text-primary-dark">
+                        {label}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          {pendingReviews > 0 && (
+            <Link
+              href="/admin/reviews"
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-white shadow-[0_4px_12px_rgba(5,70,83,0.22)] transition hover:bg-primary-dark"
+            >
+              Review inbox
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-extrabold text-white">
+                {pendingReviews > 99 ? "99+" : pendingReviews}
+              </span>
+            </Link>
           )}
-        >
-          <HeartHandshake className="h-7 w-7" strokeWidth={1.75} />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <h2 className="text-2xl font-extrabold leading-tight text-primary sm:text-[1.75rem]">
-            Thanks for showing up,{" "}
-            <span className="text-secondary-dark">{firstName}</span> 🤗
-          </h2>
-          <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-primary/75 sm:text-[15px]">
-            Any REC Recommendation?
-          </p>
         </div>
       </div>
     </div>

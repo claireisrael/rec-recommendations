@@ -1,11 +1,11 @@
 "use client";
 
-import { getTierByKey } from "@/lib/score";
+import { formatScoreRange, resolveScoreTier } from "@/lib/score";
 import type { ScoreTierKey } from "@/lib/score";
 import { cn } from "@/lib/utils";
 
 interface ScoreBadgeProps {
-  scoreTier: ScoreTierKey;
+  scoreTier: ScoreTierKey | string;
   showValue?: boolean;
   size?: "sm" | "md";
   className?: string;
@@ -17,23 +17,22 @@ export function ScoreBadge({
   size = "sm",
   className,
 }: ScoreBadgeProps) {
-  const tier = getTierByKey(scoreTier);
+  const tier = resolveScoreTier(scoreTier);
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full font-semibold whitespace-nowrap",
+        "inline-flex items-center gap-1 rounded-full font-semibold whitespace-nowrap text-white",
         size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm",
         className
       )}
       style={{
-        color: tier.color,
-        backgroundColor: tier.bgColor,
-        border: `1px solid ${tier.color}33`,
+        backgroundColor: tier.color,
       }}
+      title={`${formatScoreRange(tier)} · ${tier.label}`}
     >
       {showValue && (
-        <span className="font-bold">{tier.value}</span>
+        <span className="font-bold tabular-nums">{formatScoreRange(tier)}</span>
       )}
       <span>{tier.label}</span>
     </span>
@@ -41,12 +40,12 @@ export function ScoreBadge({
 }
 
 interface ActionScoreDotProps {
-  scoreTier: ScoreTierKey;
+  scoreTier: ScoreTierKey | string;
   className?: string;
 }
 
 export function ActionScoreDot({ scoreTier, className }: ActionScoreDotProps) {
-  const tier = getTierByKey(scoreTier);
+  const tier = resolveScoreTier(scoreTier);
   return (
     <span
       className={cn(
@@ -55,9 +54,9 @@ export function ActionScoreDot({ scoreTier, className }: ActionScoreDotProps) {
         className
       )}
       style={{ backgroundColor: tier.color }}
-      title={`${tier.value} · ${tier.label}`}
+      title={`${formatScoreRange(tier)} · ${tier.label}`}
     >
-      {tier.value}
+      {tier.max}
     </span>
   );
 }

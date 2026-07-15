@@ -8,9 +8,9 @@ export default function DashboardLayout({
 }) {
   return (
     <AdminAuthGuard>
-      <div className="min-h-screen bg-background">
+      <div className="app-shell min-h-screen">
         <AdminSidebar />
-        <main className="lg:pl-72 pt-16 lg:pt-0 min-h-screen">
+        <main className="min-h-screen pt-16 lg:pl-64 lg:pt-0">
           {children}
         </main>
       </div>

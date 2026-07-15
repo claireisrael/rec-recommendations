@@ -1,77 +1,96 @@
 "use client";
 
 import type { Recommendation } from "@/lib/types/recommendation";
-import { averageActionScore, getScoreColor } from "@/lib/score";
+import { averageActionScore, getScoreColor, getScoreBgColor } from "@/lib/score";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { CategoryBadge } from "@/components/ui/category-badge";
+import { NumberCode } from "@/components/ui/number-code";
 import { ActionScoreDot } from "@/components/ui/score-badge";
 import { ScoreRing } from "./ScoreRing";
 import { ActionEvidenceDisplay } from "@/components/ui/action-evidence";
 import { ActionPartnersDisplay } from "@/components/ui/action-partners";
+import { ListChecks } from "lucide-react";
 
 interface RecommendationCardProps {
   recommendation: Recommendation;
+  numberCode?: string;
   onClick: () => void;
 }
 
 export function RecommendationCard({
   recommendation,
+  numberCode,
   onClick,
 }: RecommendationCardProps) {
   const overallScore = averageActionScore(recommendation.actions);
+  const actionCount = recommendation.actions.length;
+  const singleAction = actionCount === 1 ? recommendation.actions[0] : null;
 
   return (
     <Card
-      className="group cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+      className="group cursor-pointer overflow-hidden border-border/90 shadow-[0_1px_2px_rgba(6,90,107,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
       onClick={onClick}
     >
-      <div className="h-1.5 gradient-card-header" />
+      <div className="h-[3px] bg-gradient-to-r from-primary via-primary-light to-secondary" />
       <CardContent className="p-5">
-        <div className="flex items-start gap-4 mb-4">
+        <div className="mb-4 flex items-start gap-4">
           <ScoreRing score={overallScore} showLabel />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <Badge variant="secondary">{recommendation.year}</Badge>
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              {numberCode && <NumberCode code={numberCode} size="md" />}
+              <CategoryBadge category={recommendation.category} />
             </div>
-            <h3 className="text-base font-bold text-primary leading-snug group-hover:text-primary-light transition-colors">
+            <p className="text-sm font-medium leading-snug text-[#1f2937] transition-colors group-hover:text-primary">
               {recommendation.recommendation}
-            </h3>
+            </p>
           </div>
         </div>
 
-        <div className="mb-4">
-          <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">
-            Actions
-          </p>
-          <ul className="space-y-2">
-            {recommendation.actions.map((action, i) => (
-              <li
-                key={i}
-                className="rounded-lg px-3 py-2.5 space-y-2"
-                style={{ backgroundColor: getScoreColor(action.scoreTier) }}
-              >
-                <div className="flex items-start gap-2 text-sm text-white">
-                  <ActionScoreDot
-                    scoreTier={action.scoreTier}
-                    className="w-6 h-6 text-[10px] shrink-0 ring-2 ring-white/70"
-                  />
-                  <span className="flex-1 break-words leading-snug font-medium">
-                    {action.text}
-                  </span>
-                </div>
-                <div className="pl-8">
-                  <ActionPartnersDisplay
-                    partner={action.partner}
-                    variant="onColor"
-                  />
-                </div>
-                <div className="pl-8">
-                  <ActionEvidenceDisplay evidence={action.evidence} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {actionCount === 0 ? (
+          <div className="rounded-lg border border-border bg-gray-50 px-3 py-2.5 text-sm text-muted">
+            Actions not yet published
+          </div>
+        ) : singleAction ? (
+          <div className="mb-1">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+              Action
+            </p>
+            <div
+              className="relative space-y-2 overflow-hidden rounded-lg border border-[rgba(5,70,83,0.1)] px-3 py-2.5"
+              style={{ backgroundColor: getScoreBgColor(singleAction.scoreTier) }}
+            >
+              <span
+                className="absolute left-0 top-0 h-full w-1"
+                style={{ backgroundColor: getScoreColor(singleAction.scoreTier) }}
+              />
+              <div className="flex items-start gap-2 pl-2 text-sm text-[#1f2937]">
+                <ActionScoreDot
+                  scoreTier={singleAction.scoreTier}
+                  className="h-6 w-6 shrink-0 text-[10px] ring-2 ring-white/80"
+                />
+                <span className="flex-1 break-words font-medium leading-snug">
+                  {singleAction.text}
+                </span>
+              </div>
+              <div className="pl-8">
+                <ActionPartnersDisplay partner={singleAction.partner} />
+              </div>
+              <div className="pl-8">
+                <ActionEvidenceDisplay evidence={singleAction.evidence} />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-[rgba(5,70,83,0.08)] bg-[#f8fafb] px-3 py-2.5">
+            <div className="flex items-center gap-2 text-sm text-primary-dark">
+              <ListChecks className="h-4 w-4 shrink-0 text-primary" />
+              <span className="font-medium">{actionCount} actions</span>
+            </div>
+            <span className="text-xs font-medium text-primary group-hover:underline">
+              Open to view
+            </span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -33,11 +33,14 @@ yarn-error.log*
 
 # env files — keep secrets out of git; allow committing the example template
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
 !.env.example
+
+# Private org / staff directory (copy from config/staff.example.json)
+/config/staff.json
+
+# Local import dumps (may contain organization content)
+/import-data/
 
 # vercel
 .vercel
@@ -51,3 +54,7 @@ next-env.d.ts
 .vscode/
 *.swp
 .cursor/
+
+# local clones of sibling apps (separate projects — do not typecheck/build with REC)
+/nrep-matrix-app
+/NREP-HR-project

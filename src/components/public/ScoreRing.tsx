@@ -40,13 +40,14 @@ export function ScoreRing({ score, size = 64, showLabel = false }: ScoreRingProp
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-sm font-bold" style={{ color }}>
-            {score}
-          </span>
+          <span className="text-sm font-bold text-[#1f2937]">{score}</span>
         </div>
       </div>
       {showLabel && (
-        <span className="text-[10px] font-semibold" style={{ color }}>
+        <span
+          className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-white"
+          style={{ backgroundColor: color }}
+        >
           {getScoreLabel(score)}
         </span>
       )}

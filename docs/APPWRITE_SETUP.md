@@ -18,10 +18,10 @@ Copy `.env.example` to `.env` (or `.env.local`) and fill in your values:
 
 ```env
 NEXT_PUBLIC_APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
-NEXT_PUBLIC_APPWRITE_PROJECT_ID=your_project_id_here
-NEXT_PUBLIC_APPWRITE_DATABASE_ID=rec_database
-NEXT_PUBLIC_APPWRITE_COLLECTION_ID=recommendation
-NEXT_PUBLIC_APPWRITE_EVIDENCE_BUCKET_ID=rec-evidence
+NEXT_PUBLIC_APPWRITE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_APPWRITE_DATABASE_ID=your_database_id
+NEXT_PUBLIC_APPWRITE_COLLECTION_ID=your_collection_id
+NEXT_PUBLIC_APPWRITE_EVIDENCE_BUCKET_ID=your_bucket_id
 ```
 
 All `NEXT_PUBLIC_*` variables are safe to expose in the browser. Security is enforced by Appwrite collection permissions.
@@ -54,6 +54,7 @@ All `NEXT_PUBLIC_*` variables are safe to expose in the browser. Security is enf
 | `actionPartners` | String | e.g. 500+ | Yes | **Yes** |
 | `actionEvidence` | String | e.g. 2000+ | No | **Yes** |
 | `comments` | String | e.g. 2000+ | No | No |
+| `category` | String | 64 (`clean_cooking`, `partnerships`, `finance`, `agri_energy`, `research`, `energy_access`, `policy`, `training`, `technology`, `inclusion`) | No | No |
 | `status` | Enum | `planned`, `in-progress`, `completed` | Yes | No |
 
 > **Important:** Use these exact attribute IDs. The app maps them in `src/lib/appwrite/database.ts`.

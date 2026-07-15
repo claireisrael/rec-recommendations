@@ -2,12 +2,15 @@
 
 import { Select } from "@/components/ui/select";
 import { ScoreBadge } from "@/components/ui/score-badge";
-import { SCORE_TIER_OPTIONS } from "@/lib/score";
-import type { ScoreTierKey } from "@/lib/score";
+import {
+  toScoreTierKey,
+  SCORE_TIER_OPTIONS,
+  type ScoreTierKey,
+} from "@/lib/score";
 import { cn } from "@/lib/utils";
 
 interface ScoreTierSelectProps {
-  value: ScoreTierKey;
+  value: ScoreTierKey | string;
   onChange: (scoreTier: ScoreTierKey) => void;
   className?: string;
   showBadge?: boolean;
@@ -19,16 +22,17 @@ export function ScoreTierSelect({
   className,
   showBadge = true,
 }: ScoreTierSelectProps) {
+  const resolved = toScoreTierKey(value);
   return (
     <div className={cn("flex items-center gap-3", className)}>
       <Select
-        value={value}
+        value={resolved}
         onChange={(v) => onChange(v as ScoreTierKey)}
         options={SCORE_TIER_OPTIONS}
         placeholder="Select rating..."
         className="flex-1"
       />
-      {showBadge && <ScoreBadge scoreTier={value} size="md" />}
+      {showBadge && <ScoreBadge scoreTier={resolved} size="md" />}
     </div>
   );
 }

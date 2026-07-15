@@ -8,8 +8,19 @@ import {
 } from "@/lib/schemas/recommendation";
 import type { Recommendation } from "@/lib/types/recommendation";
 import { STATUS_LABELS, RECOMMENDATION_STATUSES } from "@/lib/types/recommendation";
-import { getScoreColor, SCORE_TIERS, DEFAULT_TIER } from "@/lib/score";
+import {
+  CATEGORY_OPTIONS,
+  DEFAULT_CATEGORY,
+  type RecommendationCategory,
+} from "@/lib/categories";
+import { getCategoryCode } from "@/lib/numbering";
+import {
+  getScoreColor,
+  DEFAULT_TIER,
+  toScoreTierKey,
+} from "@/lib/score";
 import { ScoreTierSelect } from "@/components/ui/score-tier-select";
+import { ScoreLegend } from "@/components/ui/score-legend";
 import { ActionEvidenceField } from "@/components/admin/ActionEvidenceField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +43,7 @@ const yearOptions = Array.from({ length: 2040 - 2020 + 1 }, (_, i) => {
 }).filter((opt) => Number(opt.value) <= currentYear);
 
 const defaultAction = {
+  id: undefined as string | undefined,
   text: "",
   scoreTier: DEFAULT_TIER.key,
   partner: "",
@@ -55,10 +67,15 @@ export function RecommendationForm({
     defaultValues: {
       recommendation: initialData?.recommendation ?? "",
       year: initialData?.year ?? currentYear,
+      category: initialData?.category ?? DEFAULT_CATEGORY,
+      sectionCode:
+        initialData?.sectionCode ??
+        getCategoryCode(initialData?.category ?? DEFAULT_CATEGORY),
       actions: initialData?.actions?.length
         ? initialData.actions.map((a) => ({
+            id: a.id,
             text: a.text,
-            scoreTier: a.scoreTier,
+            scoreTier: toScoreTierKey(a.scoreTier),
             partner: a.partner,
             evidence: a.evidence ?? [],
           }))
@@ -72,6 +89,8 @@ export function RecommendationForm({
     control,
     name: "actions",
   });
+
+  const category = watch("category");
 
   const appendAction = () => {
     append({ ...defaultAction }, { shouldFocus: true });
@@ -100,7 +119,15 @@ export function RecommendationForm({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form
+      onSubmit={handleSubmit((data) =>
+        onSubmit({
+          ...data,
+          sectionCode: getCategoryCode(data.category),
+        })
+      )}
+      className="space-y-6"
+    >
       <Card>
         <CardHeader>
           <CardTitle>Basic Information</CardTitle>
@@ -135,6 +162,32 @@ export function RecommendationForm({
               )}
             </div>
             <div>
+              <Label htmlFor="category">Category</Label>
+              <Select
+                value={watch("category")}
+                onChange={(v) => {
+                  const cat = v as RecommendationCategory;
+                  setValue("category", cat);
+                  setValue("sectionCode", getCategoryCode(cat));
+                }}
+                options={CATEGORY_OPTIONS.map((o) => ({
+                  value: o.value,
+                  label: `R ${getCategoryCode(o.value)} · ${o.label}`,
+                }))}
+                placeholder="Select category"
+                className="mt-1.5"
+              />
+              {errors.category && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.category.message}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-muted">
+                Items under this category number as {getCategoryCode(category)}
+                .1, {getCategoryCode(category)}.2, …
+              </p>
+            </div>
+            <div>
               <Label htmlFor="status">Status</Label>
               <Select
                 value={watch("status")}
@@ -154,43 +207,36 @@ export function RecommendationForm({
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3">
-          <div>
-            <CardTitle>Actions &amp; Action Implementation Partners</CardTitle>
-            <p className="mt-1 text-xs font-normal text-muted">
-              {fields.length} action{fields.length === 1 ? "" : "s"} — add as
-              many as you need
+        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+          <div className="space-y-1">
+            <CardTitle>Actions</CardTitle>
+            <p className="text-sm font-normal text-muted">
+              One recommendation can include multiple actions — each with its
+              own partners, score, and evidence.
             </p>
           </div>
           <Button
             type="button"
-            variant="outline"
             size="sm"
             onClick={appendAction}
+            className="shrink-0"
           >
             <Plus className="h-4 w-4" />
-            Add Action
+            Add action
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2 pb-2 border-b border-border">
-            {SCORE_TIERS.map((tier) => (
-              <span
-                key={tier.label}
-                className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                style={{ color: tier.color, backgroundColor: tier.bgColor }}
-              >
-                {tier.value} · {tier.label}
-              </span>
-            ))}
+          <div className="space-y-2 border-b border-border pb-3">
+            <ScoreLegend />
           </div>
 
           {fields.map((field, index) => {
-            const scoreTier = watch(`actions.${index}.scoreTier`) ?? field.scoreTier;
+            const scoreTier =
+              watch(`actions.${index}.scoreTier`) ?? field.scoreTier;
             return (
               <div
                 key={field.id}
-                className="rounded-xl border border-border p-4 space-y-3"
+                className="space-y-3 rounded-xl border border-border bg-[#f8fbfc] p-4"
                 style={{
                   borderLeftWidth: 4,
                   borderLeftColor: getScoreColor(scoreTier),
@@ -199,6 +245,9 @@ export function RecommendationForm({
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                     Action {index + 1}
+                    <span className="ml-2 font-normal normal-case text-muted/80">
+                      of {fields.length}
+                    </span>
                   </p>
                   {fields.length > 1 && (
                     <Button
@@ -214,12 +263,14 @@ export function RecommendationForm({
                 </div>
 
                 <div>
-                  <Input
+                  <Label className="mb-1.5 block">Description</Label>
+                  <Textarea
                     {...register(`actions.${index}.text` as const)}
                     placeholder={`Describe action ${index + 1}`}
+                    className="min-h-[72px] bg-white"
                   />
                   {errors.actions?.[index]?.text && (
-                    <p className="text-red-500 text-xs mt-1">
+                    <p className="mt-1 text-xs text-red-500">
                       {errors.actions[index]?.text?.message}
                     </p>
                   )}
@@ -232,9 +283,10 @@ export function RecommendationForm({
                   <Input
                     {...register(`actions.${index}.partner` as const)}
                     placeholder="Partner name, or several separated by commas"
+                    className="bg-white"
                   />
                   {errors.actions?.[index]?.partner && (
-                    <p className="text-red-500 text-xs mt-1">
+                    <p className="mt-1 text-xs text-red-500">
                       {errors.actions[index]?.partner?.message}
                     </p>
                   )}
@@ -249,7 +301,9 @@ export function RecommendationForm({
                 </div>
 
                 <ActionEvidenceField
-                  evidence={watch(`actions.${index}.evidence`) ?? field.evidence ?? []}
+                  evidence={
+                    watch(`actions.${index}.evidence`) ?? field.evidence ?? []
+                  }
                   onChange={(v) => updateActionEvidence(index, v)}
                   error={errors.actions?.[index]?.evidence?.message}
                 />
@@ -260,7 +314,7 @@ export function RecommendationForm({
           <Button
             type="button"
             variant="outline"
-            className="w-full border-dashed"
+            className="w-full border-dashed border-primary/30 bg-white py-6 text-primary hover:border-primary/50 hover:bg-primary/[0.03]"
             onClick={appendAction}
           >
             <Plus className="h-4 w-4" />
@@ -268,7 +322,7 @@ export function RecommendationForm({
           </Button>
 
           {errors.actions && !Array.isArray(errors.actions) && (
-            <p className="text-red-500 text-xs">{errors.actions.message}</p>
+            <p className="text-xs text-red-500">{errors.actions.message}</p>
           )}
         </CardContent>
       </Card>

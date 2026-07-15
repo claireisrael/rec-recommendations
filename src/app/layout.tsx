@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { AppwriteProvider } from "@/components/providers/AppwriteProvider";
 
-const poppins = Poppins({
+/** Exact font family used by NREP-HR-project */
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
-  variable: "--font-poppins",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -22,8 +23,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${poppins.variable} h-full`}>
-      <body className="min-h-full flex flex-col font-sans antialiased">
+    <html lang="en" className={`${inter.variable} h-full`}>
+      <body
+        className={`${inter.className} min-h-full flex flex-col font-sans antialiased`}
+      >
         <AppwriteProvider>{children}</AppwriteProvider>
       </body>
     </html>

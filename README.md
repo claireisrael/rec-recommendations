@@ -27,9 +27,13 @@ Follow the detailed setup guide: [docs/APPWRITE_SETUP.md](docs/APPWRITE_SETUP.md
 
 ```bash
 cp .env.example .env
+cp config/staff.example.json config/staff.json
 ```
 
-Fill in your Appwrite endpoint, project, database, collection, and evidence bucket IDs.
+1. Fill in Appwrite endpoint, project, database, collection, and evidence bucket IDs in `.env`.
+2. Edit `config/staff.json` with your team emails, Appwrite user IDs, L1 routing, and section assignees.
+
+`config/staff.json` is **gitignored** — never commit real staff directories to a public repo.
 
 ### 3. Run the development server
 
@@ -51,9 +55,12 @@ src/
 │   │   └── admin/
 │   │       ├── page.tsx           # Recommendations list
 │   │       ├── new/page.tsx       # Create form
+│   │       ├── assignments/       # Responsibility roster
+│   │       ├── reviews/           # Review inbox
 │   │       └── [id]/
-│   │           ├── page.tsx       # Detail view
+│   │           ├── page.tsx       # Detail + review panel
 │   │           └── edit/page.tsx  # Edit form
+│   ├── api/admin/         # Server routes (reviews, deletes, notify)
 │   └── login/             # Admin login
 ├── components/
 │   ├── admin/             # Admin UI
@@ -62,7 +69,7 @@ src/
 │   ├── providers/         # Appwrite / auth provider
 │   └── ui/                # Shared primitives
 └── lib/
-    ├── appwrite/          # Client SDK services
+    ├── appwrite/          # Client + server notification helpers
     ├── hooks/             # Auth, idle logout, filters
     ├── schemas/           # Zod forms
     └── types/             # Shared types
@@ -72,15 +79,13 @@ src/
 
 | Color | Hex | Usage |
 |-------|-----|-------|
-| Primary (Deep Teal) | `#0B7186` | Headers, nav, buttons, links |
-| Secondary (Warm Gold) | `#FFB803` | Scores, badges, accents |
-| Font | Poppins (300–800) | All typography |
+| Primary (Deep Teal) | `#054653` / `#0B7186` | Headers, nav, buttons, links |
+| Secondary (Warm Gold) | `#FFB803` | Accents, score chips, highlights |
+| Font | Inter | Typography |
 
 ## Security
 
-All security is enforced at the Appwrite Collection Permission level:
-
-- **Read**: `Any` — public guest access
-- **Create/Update/Delete**: `users` — authenticated admins only
-
-No API routes or Server Actions are used for database writes. Admin screens are protected by a client-side auth guard; sessions expire after 20 minutes of inactivity.
+- Guest portal reads published actions only (Appwrite + public filtering).
+- Admin UI is protected by a client-side auth guard; sessions expire after idle timeout.
+- Sensitive admin writes (reviews, deletes, assignment emails) go through `src/app/api/admin/*` using a **server-only** `APPWRITE_API_KEY` — never expose that key as `NEXT_PUBLIC_*`.
+- Copy `.env.example` → `.env` and `config/staff.example.json` → `config/staff.json` locally; never commit either private file.

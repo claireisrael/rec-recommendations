@@ -1,6 +1,11 @@
 "use client";
 
-import { getScoreColor, getScoreLabel } from "@/lib/score";
+import {
+  formatScoreRange,
+  getScoreColor,
+  getScoreLabel,
+  resolveScoreTier,
+} from "@/lib/score";
 import { cn } from "@/lib/utils";
 
 interface ScoreGaugeProps {
@@ -26,6 +31,7 @@ export function ScoreGauge({
   const radius = (width - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
+  const tier = resolveScoreTier(score);
   const color = getScoreColor(score);
   const label = getScoreLabel(score);
 
@@ -55,17 +61,26 @@ export function ScoreGauge({
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={cn("font-bold leading-none", fontSize)} style={{ color }}>
+          <span
+            className={cn("font-bold leading-none text-[#1f2937]", fontSize)}
+          >
             {score}
           </span>
         </div>
       </div>
       {showLabel && (
         <span
-          className={cn("font-semibold text-center", labelSize)}
-          style={{ color }}
+          className={cn(
+            "inline-flex flex-col items-center rounded-md px-2.5 py-1 font-semibold leading-tight text-white",
+            labelSize
+          )}
+          style={{ backgroundColor: color }}
+          title={formatScoreRange(tier)}
         >
           {label}
+          <span className="mt-0.5 block font-medium text-white/90">
+            {formatScoreRange(tier)}
+          </span>
         </span>
       )}
     </div>

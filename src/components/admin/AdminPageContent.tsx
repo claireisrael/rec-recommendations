@@ -9,7 +9,7 @@ export function AdminPageContent({
 }) {
   return (
     <div
-      className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 ${className}`.trim()}
+      className={`mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-7 ${className}`.trim()}
     >
       {children}
     </div>

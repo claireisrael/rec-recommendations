@@ -1,104 +1,103 @@
 "use client";
 
 import type { Recommendation } from "@/lib/types/recommendation";
-import { averageActionScore, getScoreColor, resolveScoreTier } from "@/lib/score";
-import { ScoreBadge } from "@/components/ui/score-badge";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { ActionEvidenceDisplay } from "@/components/ui/action-evidence";
 import { hasEvidence } from "@/lib/evidence";
 import { getRecommendationPartners } from "@/lib/partners";
+import { PartnersList } from "@/components/ui/action-partners";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { NumberCode } from "@/components/ui/number-code";
 import { Button } from "@/components/ui/button";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 interface AdminRecommendationCardProps {
   recommendation: Recommendation;
+  numberCode?: string;
   onDelete: (id: string) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 export function AdminRecommendationCard({
   recommendation,
+  numberCode,
   onDelete,
+  canEdit = true,
+  canDelete = canEdit,
 }: AdminRecommendationCardProps) {
-  const overallScore = averageActionScore(recommendation.actions);
   const evidenceItems = recommendation.actions.flatMap((a) => a.evidence ?? []);
   const showEvidence = hasEvidence(evidenceItems);
   const partners = getRecommendationPartners(recommendation.actions);
 
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow">
-      <div className="h-1 gradient-card-header" />
-      <CardContent className="p-5 space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">{recommendation.year}</Badge>
-            <StatusBadge status={recommendation.status} />
-          </div>
-          <div className="text-right shrink-0">
-            <span
-              className="text-lg font-bold"
-              style={{ color: getScoreColor(overallScore) }}
-            >
-              {overallScore}
-            </span>
-            <ScoreBadge
-              scoreTier={resolveScoreTier(overallScore).key}
-              showValue
-              size="sm"
-            />
-          </div>
+    <Card className="hr-card overflow-hidden border-none shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_24px_rgba(0,0,0,0.07)]">
+      <div className="h-[3px] bg-gradient-to-r from-primary via-primary-light to-secondary" />
+      <CardContent className="space-y-3 p-5">
+        <div className="flex flex-wrap items-center gap-2">
+          {numberCode && <NumberCode code={numberCode} size="md" />}
+          <StatusBadge status={recommendation.status} />
         </div>
 
-        <h3 className="font-semibold text-primary leading-snug line-clamp-3">
+        {/* Match AdminTable body: text-sm font-medium — not global h3 bold */}
+        <p className="line-clamp-3 text-sm font-medium leading-snug text-[#1f2937]">
           {recommendation.recommendation}
-        </h3>
-
-        <p className="text-xs text-muted">
-          {recommendation.actions.length} action
-          {recommendation.actions.length === 1 ? "" : "s"}
         </p>
 
-        {partners.length > 0 && (
-          <div className="rounded-lg bg-gray-50 p-2.5">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
-              Implementation Partners
-            </p>
-            <p className="text-sm text-gray-700 break-words">
-              {partners.join(", ")}
-            </p>
-          </div>
+        {recommendation.actions.length > 1 ? (
+          <p className="text-xs font-normal text-muted">
+            {recommendation.actions.length} actions · view for details
+          </p>
+        ) : (
+          <>
+            {partners.length > 0 && (
+              <PartnersList partners={partners} showLabel={false} size="sm" />
+            )}
+            {showEvidence && (
+              <ActionEvidenceDisplay evidence={evidenceItems} />
+            )}
+          </>
         )}
 
-        {showEvidence && (
-          <div className="rounded-lg bg-gray-50 p-2.5">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
-              Evidence
-            </p>
-            <ActionEvidenceDisplay evidence={evidenceItems} />
-          </div>
-        )}
-
-        <div className="flex items-center justify-end gap-1 pt-1 border-t border-border">
+        <div className="flex items-center justify-end gap-2 border-t border-[#eceff1] pt-3">
           <Link href={`/admin/${recommendation.$id}`}>
-            <Button variant="ghost" size="icon" title="View">
+            <Button
+              variant="outline"
+              size="icon"
+              title="View"
+              className="h-9 w-9 rounded-md border-[#0b7186] text-[#0b7186] hover:bg-[#0b7186]/10"
+            >
               <Eye className="h-4 w-4" />
             </Button>
           </Link>
-          <Link href={`/admin/${recommendation.$id}/edit`}>
-            <Button variant="ghost" size="icon" title="Edit">
-              <Pencil className="h-4 w-4" />
+          {canEdit && (
+            <Link href={`/admin/${recommendation.$id}/edit`}>
+              <Button
+                variant="outline"
+                size="icon"
+                title="Edit"
+                className="h-9 w-9 rounded-md border-[#2563eb] text-[#2563eb] hover:bg-[#2563eb]/10"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </Link>
+          )}
+          {canDelete && (
+            <Button
+              variant="outline"
+              size="icon"
+              title="Delete"
+              className="h-9 w-9 rounded-md border-red-500 text-red-500 hover:bg-red-50"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete(recommendation.$id);
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
             </Button>
-          </Link>
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Delete"
-            onClick={() => onDelete(recommendation.$id)}
-          >
-            <Trash2 className="h-4 w-4 text-red-500" />
-          </Button>
+          )}
         </div>
       </CardContent>
     </Card>

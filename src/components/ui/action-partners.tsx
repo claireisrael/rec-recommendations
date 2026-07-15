@@ -1,7 +1,8 @@
 "use client";
 
-import { formatActionPartners, parseActionPartners } from "@/lib/partners";
-import { Users } from "lucide-react";
+import { parseActionPartners } from "@/lib/partners";
+import { accentChipClass } from "@/lib/accent-colors";
+import { Handshake, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ActionPartnersDisplayProps {
@@ -13,6 +14,116 @@ interface ActionPartnersDisplayProps {
   className?: string;
 }
 
+interface PartnersListProps {
+  partners: string[];
+  variant?: "onColor" | "default";
+  size?: "sm" | "md";
+  showLabel?: boolean;
+  className?: string;
+}
+
+function partnerLabel(count: number) {
+  return count === 1 ? "Implementation Partner" : "Implementation Partners";
+}
+
+export function PartnersList({
+  partners,
+  variant = "default",
+  size = "sm",
+  showLabel = true,
+  className,
+}: PartnersListProps) {
+  if (partners.length === 0) return null;
+
+  const chip =
+    size === "sm"
+      ? "text-[11px] px-2.5 py-1"
+      : "text-sm px-3 py-1.5";
+
+  if (variant === "onColor") {
+    return (
+      <div className={cn("space-y-2", className)}>
+        {showLabel && (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md bg-black/35 px-2 py-0.5 font-bold uppercase tracking-[0.14em] text-white ring-1 ring-inset ring-white/30",
+              size === "sm" ? "text-[10px]" : "text-xs"
+            )}
+          >
+            <Handshake className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} />
+            {partnerLabel(partners.length)}
+          </span>
+        )}
+        <ul className="flex flex-wrap gap-1.5">
+          {partners.map((name, i) => (
+            <li
+              key={name}
+              className={cn(
+                "inline-flex max-w-full items-center rounded-lg border font-semibold leading-snug shadow-sm",
+                accentChipClass(name, i),
+                chip
+              )}
+            >
+              <span className="break-words">{name}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  const chips = (
+    <ul className="flex flex-wrap gap-1.5">
+      {partners.map((name, i) => (
+        <li
+          key={name}
+          className={cn(
+            "inline-flex max-w-full items-center rounded-md border font-medium",
+            accentChipClass(name, i),
+            chip
+          )}
+        >
+          <span className="break-words leading-snug">{name}</span>
+        </li>
+      ))}
+    </ul>
+  );
+
+  if (!showLabel) {
+    return <div className={className}>{chips}</div>;
+  }
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-[rgba(5,70,83,0.08)] bg-white p-3",
+        className
+      )}
+    >
+      <div className="mb-2.5 flex items-center gap-2">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[rgba(5,70,83,0.08)] text-primary">
+          <Users className="h-3.5 w-3.5" />
+        </span>
+        <div>
+          <p
+            className={cn(
+              "font-bold uppercase tracking-[0.12em] text-primary",
+              size === "sm" ? "text-[10px]" : "text-xs"
+            )}
+          >
+            {partnerLabel(partners.length)}
+          </p>
+          <p className="text-[11px] text-muted">
+            {partners.length} organisation
+            {partners.length === 1 ? "" : "s"} delivering this action
+          </p>
+        </div>
+      </div>
+      {chips}
+    </div>
+  );
+}
+
 export function ActionPartnersDisplay({
   partner,
   variant = "default",
@@ -20,61 +131,13 @@ export function ActionPartnersDisplay({
   showLabel = true,
   className,
 }: ActionPartnersDisplayProps) {
-  const partners = parseActionPartners(partner);
-  if (partners.length === 0) return null;
-
-  const label =
-    partners.length === 1
-      ? "Implementation Partner"
-      : "Implementation Partners";
-
-  if (variant === "onColor") {
-    return (
-      <div className={cn("space-y-1.5", className)}>
-        {showLabel && (
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full bg-black/30 px-2 py-0.5 font-bold uppercase tracking-widest text-white ring-1 ring-inset ring-white/25",
-              size === "sm" ? "text-[10px]" : "text-xs"
-            )}
-          >
-            <Users className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} />
-            {label}
-          </span>
-        )}
-        <p
-          className={cn(
-            "inline-block max-w-full rounded-lg bg-white px-2.5 py-1 font-semibold leading-snug text-gray-900 shadow-sm",
-            size === "sm" ? "text-xs" : "text-sm"
-          )}
-        >
-          {formatActionPartners(partner)}
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className={cn("space-y-1", className)}>
-      {showLabel && (
-        <span
-          className={cn(
-            "block font-bold uppercase tracking-widest text-primary/60",
-            size === "sm" ? "text-[10px]" : "text-xs"
-          )}
-        >
-          {label}
-        </span>
-      )}
-      <span
-        className={cn(
-          "inline-flex max-w-full items-start gap-1.5 rounded-lg border border-primary/15 bg-primary/8 px-2.5 py-1 font-semibold text-primary break-words",
-          size === "sm" ? "text-xs" : "text-sm"
-        )}
-      >
-        <Users className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        {formatActionPartners(partner)}
-      </span>
-    </div>
+    <PartnersList
+      partners={parseActionPartners(partner)}
+      variant={variant}
+      size={size}
+      showLabel={showLabel}
+      className={className}
+    />
   );
 }

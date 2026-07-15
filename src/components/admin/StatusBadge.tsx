@@ -18,13 +18,13 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
         className
       )}
       style={{ color: c.color, backgroundColor: c.bg, borderColor: c.border }}
     >
       <span
-        className="h-1.5 w-1.5 rounded-full"
+        className="h-1.5 w-1.5 rounded-full opacity-80"
         style={{ backgroundColor: c.color }}
       />
       {STATUS_LABELS[status]}

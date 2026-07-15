@@ -1,0 +1,73 @@
+{
+  "finalPublisherEmail": "publisher@example.com",
+  "users": [
+    {
+      "email": "publisher@example.com",
+      "name": "Final Publisher",
+      "role": "superadmin",
+      "userId": "replace-with-appwrite-user-id"
+    },
+    {
+      "email": "admin@example.com",
+      "name": "Secondary Admin",
+      "role": "superadmin",
+      "userId": "replace-with-appwrite-user-id"
+    },
+    {
+      "email": "l1a@example.com",
+      "name": "L1 Reviewer A",
+      "role": "l1_reviewer",
+      "userId": "replace-with-appwrite-user-id"
+    },
+    {
+      "email": "l1b@example.com",
+      "name": "L1 Reviewer B",
+      "role": "l1_reviewer",
+      "userId": "replace-with-appwrite-user-id"
+    },
+    {
+      "email": "l1c@example.com",
+      "name": "L1 Reviewer C",
+      "role": "l1_reviewer",
+      "userId": "replace-with-appwrite-user-id"
+    },
+    {
+      "email": "contributor@example.com",
+      "name": "Contributor",
+      "role": "member",
+      "userId": "replace-with-appwrite-user-id"
+    }
+  ],
+  "l1ApproverBySubmitter": {
+    "contributor@example.com": "l1a@example.com",
+    "admin@example.com": "l1b@example.com"
+  },
+  "l1PeerChoosers": [
+    "l1a@example.com",
+    "l1b@example.com",
+    "l1c@example.com",
+    "publisher@example.com"
+  ],
+  "itemAssignees": [
+    {
+      "name": "Contributor",
+      "email": "contributor@example.com",
+      "userId": "replace-with-appwrite-user-id",
+      "sections": ["6.1"]
+    },
+    {
+      "name": "L1 Reviewer B",
+      "email": "l1b@example.com",
+      "userId": "replace-with-appwrite-user-id",
+      "sections": ["6.2"]
+    }
+  ],
+  "categoryLeads": {
+    "finance": [
+      {
+        "name": "Finance Lead",
+        "email": "contributor@example.com"
+      }
+    ]
+  }
+}
