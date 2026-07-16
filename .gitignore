@@ -38,6 +38,8 @@ yarn-error.log*
 
 # Private org / staff directory (copy from config/staff.example.json)
 /config/staff.json
+# Minified staff JSON for pasting into host env vars (contains real staff data)
+/config/staff.env.txt
 
 # Local import dumps (may contain organization content)
 /import-data/
