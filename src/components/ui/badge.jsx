@@ -1,0 +1,26 @@
+import { cn } from "@/lib/utils";
+
+/**
+ * @param {import("react").HTMLAttributes<HTMLSpanElement> & { variant?: "default" | "secondary" | "success" | "warning" | "destructive" | "outline" }} props
+ */
+function Badge({ className, variant = "default", ...props }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors",
+        {
+          "bg-primary/10 text-primary": variant === "default",
+          "bg-secondary/20 text-primary-dark": variant === "secondary",
+          "bg-green-100 text-green-700": variant === "success",
+          "bg-amber-100 text-amber-700": variant === "warning",
+          "bg-red-100 text-red-700": variant === "destructive",
+          "border border-gray-200 text-gray-600 bg-white": variant === "outline",
+        },
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+export { Badge };

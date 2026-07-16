@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@staff-config": ["./config/staff.example.json"]
+    },
+    "checkJs": false
+  },
+  "include": [
+    "src/**/*.js",
+    "src/**/*.jsx",
+    "next.config.mjs"
+  ],
+  "exclude": ["node_modules", ".next", "nrep-matrix-app", "NREP-HR-project"]
+}

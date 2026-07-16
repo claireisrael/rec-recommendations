@@ -61,7 +61,7 @@ const dryRun = process.env.IMPORT_DRY_RUN === "1";
 const YEAR = 2025;
 const STATUS = "planned";
 const PLACEHOLDER_ACTION = "Action to be defined";
-const PLACEHOLDER_SCORE = "average";
+const PLACEHOLDER_SCORE = "fair";
 
 const SECTION_MAP = [
   { match: /clean cooking|manufacturing|value chain|fumbahub/i, category: "clean_cooking" },

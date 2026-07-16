@@ -1,0 +1,18 @@
+/**
+ * @typedef {'l1_review_requested' | 'superadmin_review_requested' | 'action_reviewed' | 'action_published' | 'changes_requested' | 'responsibility_assigned'} NotificationType
+ */
+
+/**
+ * @typedef {Object} AppNotification
+ * @property {string} [$id]
+ * @property {string} userId
+ * @property {NotificationType} type
+ * @property {string} title
+ * @property {string} body
+ * @property {string} [recommendationId]
+ * @property {string} [actionId]
+ * @property {boolean} read
+ * @property {string} [$createdAt]
+ */
+
+export {};

@@ -57,7 +57,7 @@ All `NEXT_PUBLIC_*` variables are safe to expose in the browser. Security is enf
 | `category` | String | 64 (`clean_cooking`, `partnerships`, `finance`, `agri_energy`, `research`, `energy_access`, `policy`, `training`, `technology`, `inclusion`) | No | No |
 | `status` | Enum | `planned`, `in-progress`, `completed` | Yes | No |
 
-> **Important:** Use these exact attribute IDs. The app maps them in `src/lib/appwrite/database.ts`.
+> **Important:** Use these exact attribute IDs. The app maps them in `src/lib/appwrite/database.js`.
 >
 > Avoid reserved Appwrite names such as `action` / `actions` as attribute IDs.
 
@@ -70,15 +70,16 @@ All `NEXT_PUBLIC_*` variables are safe to expose in the browser. Security is enf
 
 **`actionScores` enum options:**
 
-| Enum value | Rating | Score |
-|------------|--------|-------|
-| `poor` | Poor | 40 |
-| `fair` | Fair | 50 |
-| `average` | Average | 65 |
-| `good` | Good | 75 |
-| `very_good` | Very Good | 85 |
-| `excellent` | Excellent | 95 |
-| `exceptional` | Exceptional | 100 |
+| Enum value | Rating | Range | Color |
+|------------|--------|-------|-------|
+| `very_poor` | Very Poor | 0–20 | `#DD2116` |
+| `poor` | Poor | 21–40 | `#F55807` |
+| `fair` | Fair | 41–60 | `#B27B38` |
+| `good` | Good | 61–80 | `#379885` |
+| `very_good` | Very Good | 81–100 | `#254F5F` |
+| `exceptional` | Exceptional | 101+ | `#CA9961` |
+
+> Add `very_poor` in the Appwrite Console if it is missing. Legacy values `average` and `excellent` still resolve when reading old documents, but new writes use the table above only.
 
 **`status` enum options** (Appwrite uses a hyphen for in-progress):
 
