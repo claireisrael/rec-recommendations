@@ -45,7 +45,15 @@ function decodeBase64(str) {
 function parseEnvConfig() {
   const rawEnv = process.env.NEXT_PUBLIC_STAFF_CONFIG;
   if (!rawEnv || !rawEnv.trim()) return null;
-  const text = rawEnv.trim();
+
+  // Strip surrounding whitespace and any wrapping quotes a host may add.
+  let text = rawEnv.trim();
+  if (
+    (text.startsWith('"') && text.endsWith('"')) ||
+    (text.startsWith("'") && text.endsWith("'"))
+  ) {
+    text = text.slice(1, -1).trim();
+  }
 
   // 1) Try raw JSON.
   try {
@@ -54,17 +62,25 @@ function parseEnvConfig() {
     // fall through
   }
 
-  // 2) Try base64-encoded JSON.
+  // 2) Try base64-encoded JSON (strip any whitespace/newlines first).
   try {
-    return JSON.parse(decodeBase64(text));
+    return JSON.parse(decodeBase64(text.replace(/\s+/g, "")));
   } catch {
-    throw new Error(
-      "NEXT_PUBLIC_STAFF_CONFIG could not be parsed as JSON or base64-encoded JSON. Re-copy the value from config/staff.env.txt."
-    );
+    return null;
   }
 }
 
-const raw = parseEnvConfig() ?? fallback;
+const parsed = parseEnvConfig();
+
+if (process.env.NEXT_PUBLIC_STAFF_CONFIG && !isStaffConfig(parsed)) {
+  // The env var was provided but unusable. Warn loudly but don't crash the
+  // build/runtime — fall back to the bundled config so the app still serves.
+  console.error(
+    "[staff-config] NEXT_PUBLIC_STAFF_CONFIG is set but could not be parsed as valid staff JSON (raw or base64). Falling back to bundled config. Re-copy the value from config/staff.env.txt."
+  );
+}
+
+const raw = isStaffConfig(parsed) ? parsed : fallback;
 
 if (!isStaffConfig(raw)) {
   throw new Error(
