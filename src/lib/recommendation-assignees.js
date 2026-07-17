@@ -1,4 +1,4 @@
-import { isSuperadmin, normalizeEmail } from "@/lib/roles";
+import { isL1Reviewer, isSuperadmin, normalizeEmail } from "@/lib/roles";
 import { staffConfig } from "@/lib/staff-config";
 import {
   categoryFromSectionCode,
@@ -136,6 +136,8 @@ export function listAssignedCategoriesForEmail(email) {
  */
 export function canCreateRecommendations(email) {
   if (isSuperadmin(email)) return true;
+  // L1 reviewers review submissions — they do not author recommendations.
+  if (isL1Reviewer(email)) return false;
   if (isEditRestrictedUser(email)) return false;
   return true;
 }
@@ -160,7 +162,13 @@ export function canEditRecommendation(email, target) {
   if (isSuperadmin(email)) return true;
 
   const entry = getItemAssigneeEntry(email);
-  if (!entry) return true;
+  if (!entry) {
+    // L1 reviewers are review-only. Any edit access they have comes solely from
+    // an item assignment (handled below). Without one, they cannot edit content
+    // — this stops an unassigned L1 reviewer from getting Mukisa-like powers.
+    if (isL1Reviewer(email)) return false;
+    return true;
+  }
 
   const code =
     (target.code || "").trim().replace(/^R\s*/i, "") ||
@@ -197,6 +205,45 @@ export function canEditRecommendation(email, target) {
   }
 
   return false;
+}
+
+/**
+ * An action is still editable by its contributor while it is a draft or has
+ * had changes requested. Once it is submitted for review or published, only
+ * admins may touch it.
+ * @param {{ review?: { status?: string } } | undefined | null} action
+ * @returns {boolean}
+ */
+export function isActionEditableStage(action) {
+  const status = action?.review?.status || "draft";
+  return status === "draft" || status === "changes_requested";
+}
+
+/**
+ * True when a recommendation still has at least one action a contributor may
+ * edit (draft / changes requested). Recommendations with no actions yet count
+ * as editable so they can be filled in.
+ * @param {{ actions?: Array<{ review?: { status?: string } }> } | undefined | null} recommendation
+ * @returns {boolean}
+ */
+export function hasEditableDraftAction(recommendation) {
+  const actions = recommendation?.actions ?? [];
+  if (actions.length === 0) return true;
+  return actions.some((a) => isActionEditableStage(a));
+}
+
+/**
+ * Full edit gate used by the UI and API: assignment rules PLUS the draft-stage
+ * rule for contributors. Admins (superadmin) may edit at any stage.
+ * @param {string | undefined | null} email
+ * @param {import("./recommendation-assignees").RecommendationAccessTarget} target
+ * @param {{ actions?: Array<{ review?: { status?: string } }> } | undefined | null} recommendation
+ * @returns {boolean}
+ */
+export function canEditRecommendationNow(email, target, recommendation) {
+  if (!canEditRecommendation(email, target)) return false;
+  if (isSuperadmin(email)) return true;
+  return hasEditableDraftAction(recommendation);
 }
 
 export function listAllAssignedSections() {

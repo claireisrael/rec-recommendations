@@ -41,12 +41,9 @@ export function LandingPageContent({ className, preview = false }) {
         </div>
 
         <header className="relative z-10 w-fit pt-1 pb-8">
-          <div className="landing-logo-wash" aria-hidden />
-          <NrepLogo
-            height={100}
-            priority={!preview}
-            className="relative z-10"
-          />
+          <div className="inline-flex items-center justify-center rounded-2xl bg-white px-6 py-4 ring-1 ring-black/5">
+            <NrepLogo height={84} priority={!preview} />
+          </div>
         </header>
 
         <div className="relative z-10 flex-1 flex flex-col justify-center py-10 lg:py-0">
@@ -82,7 +79,7 @@ export function LandingPageContent({ className, preview = false }) {
                 variant="outline"
                 className="w-full sm:w-auto h-12 px-8 border-white/30 bg-white text-primary hover:bg-white/90 hover:text-primary transition-all duration-300 group-hover:scale-[1.03]"
               >
-                Admin Login
+                Login
               </Button>
             </Link>
           </div>

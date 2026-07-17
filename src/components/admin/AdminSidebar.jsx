@@ -126,9 +126,8 @@ export function AdminSidebar() {
           className="flex flex-col items-center gap-4"
           onClick={() => setMobileOpen(false)}
         >
-          <div className="relative mx-auto flex w-fit items-center justify-center py-2">
-            <div className="sidebar-logo-wash" aria-hidden />
-            <NrepLogo height={76} priority className="relative z-10" />
+          <div className="mx-auto flex w-fit items-center justify-center rounded-2xl bg-white px-5 py-3.5 ring-1 ring-black/5">
+            <NrepLogo height={64} priority />
           </div>
           <div className="text-center">
             <p className="text-base font-bold tracking-wide text-secondary">

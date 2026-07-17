@@ -43,13 +43,15 @@ const defaultAction = {
  * @param {{
  *   initialData?: import("@/lib/types/recommendation").Recommendation,
  *   onSubmit: (data: import("@/lib/schemas/recommendation").RecommendationFormData) => Promise<void>,
- *   isSubmitting?: boolean
+ *   isSubmitting?: boolean,
+ *   lockProtected?: boolean
  * }} props
  */
 export function RecommendationForm({
   initialData,
   onSubmit,
   isSubmitting,
+  lockProtected = false,
 }) {
   const {
     register,
@@ -141,8 +143,19 @@ export function RecommendationForm({
               id="recommendation"
               {...register("recommendation")}
               placeholder="Describe the recommendation"
-              className="mt-1.5 min-h-[120px]"
+              readOnly={lockProtected}
+              aria-readonly={lockProtected}
+              className={`mt-1.5 min-h-[120px]${
+                lockProtected
+                  ? " cursor-not-allowed bg-[#f1f5f6] text-muted"
+                  : ""
+              }`}
             />
+            {lockProtected && (
+              <p className="mt-1 text-xs text-muted">
+                Only Dr. Mukisa can edit the recommendation text.
+              </p>
+            )}
             {errors.recommendation && (
               <p className="text-red-500 text-xs mt-1">{errors.recommendation.message}</p>
             )}
@@ -293,8 +306,19 @@ export function RecommendationForm({
                   <Input
                     {...register(`actions.${index}.partner`)}
                     placeholder="Partner name, or several separated by commas"
-                    className="bg-white"
+                    readOnly={lockProtected}
+                    aria-readonly={lockProtected}
+                    className={
+                      lockProtected
+                        ? "cursor-not-allowed bg-[#f1f5f6] text-muted"
+                        : "bg-white"
+                    }
                   />
+                  {lockProtected && (
+                    <p className="mt-1 text-xs text-muted">
+                      Only Dr. Mukisa can edit partners.
+                    </p>
+                  )}
                   {errors.actions?.[index]?.partner && (
                     <p className="mt-1 text-xs text-red-500">
                       {errors.actions[index]?.partner?.message}

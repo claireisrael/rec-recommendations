@@ -20,7 +20,11 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { buildRecommendationNumbering } from "@/lib/numbering";
-import { canEditRecommendation } from "@/lib/recommendation-assignees";
+import {
+  canEditRecommendationNow,
+  hasEditableDraftAction,
+} from "@/lib/recommendation-assignees";
+import { isFinalPublisher, isSuperadmin } from "@/lib/roles";
 
 export default function EditRecommendationPage() {
   const params = useParams();
@@ -35,6 +39,7 @@ export default function EditRecommendationPage() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [forbidden, setForbidden] = useState(false);
+  const canEditProtected = isFinalPublisher(user?.email);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,12 +57,16 @@ export default function EditRecommendationPage() {
         setSectionCode(section);
         if (
           user?.email &&
-          !canEditRecommendation(user.email, {
-            id: rec.$id,
-            code,
-            sectionCode: section,
-            category: rec.category,
-          })
+          !canEditRecommendationNow(
+            user.email,
+            {
+              id: rec.$id,
+              code,
+              sectionCode: section,
+              category: rec.category,
+            },
+            rec
+          )
         ) {
           setForbidden(true);
         }
@@ -75,28 +84,44 @@ export default function EditRecommendationPage() {
   /** @param {import("@/lib/schemas/recommendation").RecommendationFormData} data */
   const handleSubmit = async (data) => {
     if (
-      !canEditRecommendation(user?.email, {
-        id,
-        code: numberCode,
-        sectionCode,
-        category: recommendation?.category,
-      })
+      !canEditRecommendationNow(
+        user?.email,
+        {
+          id,
+          code: numberCode,
+          sectionCode,
+          category: recommendation?.category,
+        },
+        recommendation
+      )
     ) {
-      toast.error("You can only edit recommendations in your assigned sections");
+      toast.error(
+        isSuperadmin(user?.email)
+          ? "You can only edit recommendations in your assigned sections"
+          : "This action has been submitted and can no longer be edited. It can only be changed while it is a draft."
+      );
       return;
     }
     setIsSubmitting(true);
     try {
+      const prevActions = recommendation?.actions ?? [];
+      const prevPartnerById = new Map(
+        prevActions.map((a) => [a.id, a.partner])
+      );
       const filtered = {
         ...data,
-        actions: finalizeActions(
-          data.actions,
-          recommendation?.actions ?? []
-        ).map((a) => ({
+        actions: finalizeActions(data.actions, prevActions).map((a) => ({
           ...a,
-          partner: formatActionPartners(a.partner),
+          // Recommendation text and partners are Dr. Mukisa's to change only —
+          // for everyone else, keep whatever was already saved.
+          partner: canEditProtected
+            ? formatActionPartners(a.partner)
+            : prevPartnerById.get(a.id) ?? "",
         })),
       };
+      if (!canEditProtected) {
+        filtered.recommendation = recommendation?.recommendation ?? "";
+      }
       await updateRecommendation(id, filtered);
       await revalidateGuestPortal();
       toast.success("Recommendation updated successfully");
@@ -130,7 +155,11 @@ export default function EditRecommendationPage() {
         <div className="text-center py-16">
           <p className="text-muted">
             {forbidden
-              ? "You can view this recommendation, but editing is limited to items assigned to you."
+              ? recommendation &&
+                !isSuperadmin(user?.email) &&
+                !hasEditableDraftAction(recommendation)
+                ? "This recommendation has been submitted for review or published, so it can no longer be edited here. Actions can only be changed while they are drafts."
+                : "You can view this recommendation, but editing is limited to items assigned to you."
               : "Recommendation not found"}
           </p>
           <Link href={forbidden ? `/admin/${id}` : "/admin"}>
@@ -166,6 +195,7 @@ export default function EditRecommendationPage() {
         initialData={recommendation}
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
+        lockProtected={!canEditProtected}
       />
       </div>
     </AdminPageContent>

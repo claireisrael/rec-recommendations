@@ -48,7 +48,7 @@ import {
 } from "lucide-react";
 import {
   canDeleteRecommendation,
-  canEditRecommendation,
+  canEditRecommendationNow,
 } from "@/lib/recommendation-assignees";
 import { isFinalPublisher, isL1Reviewer } from "@/lib/roles";
 import { cn } from "@/lib/utils";
@@ -195,7 +195,11 @@ export function AdminDetailPageContent() {
     sectionCode: sectionCode || recommendation.sectionCode,
     category: recommendation.category,
   };
-  const canEdit = canEditRecommendation(user?.email, accessTarget);
+  const canEdit = canEditRecommendationNow(
+    user?.email,
+    accessTarget,
+    recommendation
+  );
   const canDelete = canDeleteRecommendation(user?.email, accessTarget);
   const isReviewMode = pendingForUser.length > 0 || Boolean(reviewActionId);
 

@@ -168,7 +168,7 @@ export function GuestDashboard({
             href="/login"
             className="rounded-full border border-primary/15 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary transition-colors hover:border-primary/30 hover:bg-primary/10"
           >
-            Admin Login
+            Login
           </Link>
         </div>
       </header>

@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import {
   canCreateRecommendations,
   canDeleteRecommendation,
-  canEditRecommendation,
+  canEditRecommendationNow,
 } from "@/lib/recommendation-assignees";
 
 export default function AdminDashboardPage() {
@@ -79,12 +79,16 @@ export default function AdminDashboardPage() {
               loading={loading}
               onDelete={(id) => setPendingDeleteId(id)}
               canEditItem={(rec, code) =>
-                canEditRecommendation(user?.email, {
-                  id: rec.$id,
-                  code,
-                  sectionCode: rec.sectionCode,
-                  category: rec.category,
-                })
+                canEditRecommendationNow(
+                  user?.email,
+                  {
+                    id: rec.$id,
+                    code,
+                    sectionCode: rec.sectionCode,
+                    category: rec.category,
+                  },
+                  rec
+                )
               }
               canDeleteItem={(rec, code) =>
                 canDeleteRecommendation(user?.email, {

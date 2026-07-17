@@ -4,6 +4,24 @@ import {
   canEditRecommendation,
 } from "@/lib/recommendation-assignees";
 import { buildRecommendationNumbering } from "@/lib/numbering";
+import { isFinalPublisher, isSuperadmin } from "@/lib/roles";
+import { parseActionReview } from "@/lib/action-review";
+
+/**
+ * True when a stored document still has at least one action a contributor may
+ * edit (draft / changes requested), or has no actions/reviews yet.
+ * @param {{ actionItems?: unknown[], actionReviews?: unknown[] }} doc
+ */
+function docHasEditableDraft(doc) {
+  const items = Array.isArray(doc?.actionItems) ? doc.actionItems : [];
+  if (items.length === 0) return true;
+  const reviews = Array.isArray(doc?.actionReviews) ? doc.actionReviews : [];
+  if (reviews.length === 0) return true;
+  return reviews.some((raw) => {
+    const status = parseActionReview(typeof raw === "string" ? raw : "").status;
+    return status === "draft" || status === "changes_requested";
+  });
+}
 
 function env() {
   return {
@@ -256,6 +274,44 @@ export async function PATCH(request, context) {
   const payload = await request.json().catch(() => null);
   if (!payload || typeof payload !== "object") {
     return NextResponse.json({ message: "Invalid body" }, { status: 400 });
+  }
+
+  // We need the stored doc to enforce the draft-stage rule (for contributors)
+  // and to restore partners (for anyone who isn't the final publisher). The
+  // final publisher bypasses both, so only skip the fetch for them.
+  const existing = isFinalPublisher(account.email)
+    ? null
+    : await getDocument(cfg, id);
+  // Non-admin contributors may only edit while an action is still a draft (or
+  // has changes requested). Once it is submitted for review or published, it is
+  // locked for them — only admins can touch it.
+  if (!isSuperadmin(account.email) && existing && !docHasEditableDraft(existing)) {
+    return NextResponse.json(
+      {
+        message:
+          "This action has been submitted and can no longer be edited. It can only be changed while it is a draft.",
+      },
+      { status: 403 }
+    );
+  }
+
+  // Recommendation text and implementation partners may only be changed by the
+  // final publisher (Dr. Mukisa). For anyone else, drop the text change and
+  // keep the existing partners so an assignee's edit can never alter them.
+  if (!isFinalPublisher(account.email)) {
+    delete payload.recommendations;
+    if (payload.actionPartners !== undefined) {
+      const prevPartners = Array.isArray(existing?.actionPartners)
+        ? existing.actionPartners
+        : [];
+      const length = Array.isArray(payload.actionItems)
+        ? payload.actionItems.length
+        : payload.actionPartners.length;
+      payload.actionPartners = Array.from(
+        { length },
+        (_, i) => prevPartners[i] ?? ""
+      );
+    }
   }
 
   const patchRes = await fetch(

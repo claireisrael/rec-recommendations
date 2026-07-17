@@ -402,42 +402,6 @@ h6 {
   animation: landing-orb-float 10s ease-in-out 2s infinite;
 }
 
-.landing-logo-wash {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 22rem;
-  height: 22rem;
-  transform: translate(-48%, -52%);
-  pointer-events: none;
-  background: radial-gradient(
-    circle 5.75rem at center,
-    #ffffff 0%,
-    #ffffff 38%,
-    rgba(255, 255, 255, 0.72) 62%,
-    rgba(255, 255, 255, 0.18) 82%,
-    transparent 100%
-  );
-}
-
-.sidebar-logo-wash {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 13rem;
-  height: 13rem;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  background: radial-gradient(
-    circle 4.25rem at center,
-    #ffffff 0%,
-    #ffffff 38%,
-    rgba(255, 255, 255, 0.75) 62%,
-    rgba(255, 255, 255, 0.2) 82%,
-    transparent 100%
-  );
-}
-
 /* Thin teal–gold slider for the shorter REC sidebar nav */
 .sidebar-nav-scroll {
   scrollbar-width: thin;
@@ -476,19 +440,6 @@ h6 {
     rgba(255, 184, 3, 0.55) 0%,
     rgba(255, 184, 3, 0.9) 45%,
     rgba(5, 70, 83, 0.95) 100%
-  );
-}
-
-.sidebar-logo-wash--sm {
-  width: 6.5rem;
-  height: 6.5rem;
-  background: radial-gradient(
-    circle 2rem at center,
-    #ffffff 0%,
-    #ffffff 38%,
-    rgba(255, 255, 255, 0.72) 62%,
-    rgba(255, 255, 255, 0.18) 82%,
-    transparent 100%
   );
 }
 
