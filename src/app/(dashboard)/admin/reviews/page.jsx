@@ -30,21 +30,33 @@ import { cn } from "@/lib/utils";
 
 const TYPE_META = {
   l1_review_requested: {
-    label: "Needs your review",
+    label: "Needs your L1 review",
+    icon: ClipboardCheck,
+    actionable: true,
+    tone: "action",
+  },
+  feedback_responded: {
+    label: "Feedback addressed — re-review",
     icon: ClipboardCheck,
     actionable: true,
     tone: "action",
   },
   superadmin_review_requested: {
-    label: "Final review needed",
+    label: "Final review & publication",
     icon: ShieldCheck,
     actionable: true,
     tone: "action",
   },
   action_reviewed: {
-    label: "Pending final approval",
+    label: "Pending Superadmin publication",
     icon: ShieldCheck,
     actionable: false,
+    tone: "progress",
+  },
+  l1_edited_and_forwarded: {
+    label: "Your L1 edited & forwarded",
+    icon: ShieldCheck,
+    actionable: true,
     tone: "progress",
   },
   action_published: {
@@ -54,7 +66,7 @@ const TYPE_META = {
     tone: "success",
   },
   changes_requested: {
-    label: "Changes requested",
+    label: "Sent back by L1 — update needed",
     icon: MessageSquareWarning,
     actionable: true,
     tone: "alert",
@@ -148,17 +160,29 @@ function buildClearMessage(input) {
           : `Open ${ref} and score the assigned action.`,
         spotlight: input.actionText,
       };
+    case "feedback_responded":
+      return {
+        headline: `${who} responded to your feedback`,
+        detail: `They updated the action and resent it for your Level 1 review. Open ${ref} to continue.`,
+        spotlight: input.actionText,
+      };
     case "superadmin_review_requested":
       return {
-        headline: `${who} sent an action for final review`,
+        headline: `${who} sent an action for Superadmin publication`,
         detail: `Set the final score and publish for ${ref}.`,
         spotlight: input.actionText,
       };
     case "action_reviewed":
       return {
-        headline: "Your action is pending final approval",
-        detail: `${who} approved it. ${ref} is now awaiting final approval.`,
+        headline: "Your action is with Superadmin for publication",
+        detail: `${who} sent it on. ${ref} is awaiting final review and publication.`,
         spotlight: `Final stage · ${ref}`,
+      };
+    case "l1_edited_and_forwarded":
+      return {
+        headline: `${who} (your Level 1 approver) edited your action`,
+        detail: `They updated it and sent ${ref} to Superadmin for final review and publication — without bouncing it back to you. Open to see what changed.`,
+        spotlight: input.actionText || ref,
       };
     case "action_published":
       return {
@@ -168,8 +192,8 @@ function buildClearMessage(input) {
       };
     case "changes_requested":
       return {
-        headline: `${who} requested changes — action needed`,
-        detail: `Update ${ref}, then send it back for review.`,
+        headline: `${who} sent this action back to you`,
+        detail: `Update ${ref}, then resend it to Level 1 for review.`,
         spotlight: input.actionText,
       };
     default:
@@ -187,8 +211,10 @@ function buildClearMessage(input) {
 /** @type {Set<import("@/lib/appwrite/notification-types").NotificationType>} */
 const ACTIONABLE_TYPES = new Set([
   "l1_review_requested",
+  "feedback_responded",
   "superadmin_review_requested",
   "changes_requested",
+  "l1_edited_and_forwarded",
 ]);
 
 /** Status updates (no approval) remain visible for this long, then drop. */

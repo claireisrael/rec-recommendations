@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isEvidenceLink } from "@/lib/evidence";
+import { getEvidenceRef, isEvidenceLink } from "@/lib/evidence";
 import { RECOMMENDATION_CATEGORIES } from "@/lib/categories";
 import {
   createActionId,
@@ -20,22 +20,30 @@ const SCORE_KEYS = [
   "exceptional",
 ];
 
+const evidenceFileSchema = z.object({
+  fileId: z.string().min(1),
+  fileName: z.string().min(1),
+});
+
 const evidenceSchema = z.array(
-  z.string().refine(
-    (val) => {
-      if (!val.trim()) return false;
-      if (isEvidenceLink(val)) {
-        try {
-          new URL(val);
-          return true;
-        } catch {
-          return false;
+  z.union([
+    z.string().refine(
+      (val) => {
+        if (!val.trim()) return false;
+        if (isEvidenceLink(val)) {
+          try {
+            new URL(val);
+            return true;
+          } catch {
+            return false;
+          }
         }
-      }
-      return true;
-    },
-    { message: "Enter a valid URL (https://...)" }
-  )
+        return true;
+      },
+      { message: "Enter a valid URL (https://...)" }
+    ),
+    evidenceFileSchema,
+  ])
 );
 
 /** Draft row in the form — empty rows are allowed until submit filters them. */
@@ -117,7 +125,7 @@ export function finalizeActions(actions, previous = []) {
         text: a.text.trim(),
         scoreTier: a.scoreTier,
         partner: a.partner.trim(),
-        evidence: (a.evidence ?? []).filter(Boolean),
+        evidence: (a.evidence ?? []).filter((item) => Boolean(getEvidenceRef(item))),
         review: { ...review, id },
       };
     });

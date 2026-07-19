@@ -91,6 +91,12 @@ export function reviewStageForType(type) {
         stageLabel: "Waiting on Level 1 review",
         badgeColor: "#e08e24",
       };
+    case "feedback_responded":
+      return {
+        waitingOn: "Level 1 reviewer",
+        stageLabel: "Assignee responded — waiting on Level 1 re-review",
+        badgeColor: "#e08e24",
+      };
     case "superadmin_review_requested":
       return {
         waitingOn: "Superadmin",
@@ -106,8 +112,14 @@ export function reviewStageForType(type) {
     case "changes_requested":
       return {
         waitingOn: "Contributor / section owner",
-        stageLabel: "Waiting on updates from the submitter",
+        stageLabel: "L1 sent the action back — waiting on updates",
         badgeColor: "#d97706",
+      };
+    case "l1_edited_and_forwarded":
+      return {
+        waitingOn: "Superadmin",
+        stageLabel: "L1 edited and sent to Superadmin for publication",
+        badgeColor: "#054653",
       };
     case "action_published":
       return {

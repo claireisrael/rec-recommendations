@@ -184,6 +184,61 @@ export async function markActionNotificationsRead(apiKey, input) {
 }
 
 /**
+ * Clear every unread notification tied to this recommendation action (all users).
+ * Used when the superadmin publishes so the communication loop closes.
+ *
+ * @param {string} apiKey
+ * @param {{ recommendationId: string; actionId: string }} input
+ * @returns {Promise<number>}
+ */
+export async function markAllActionNotificationsRead(apiKey, input) {
+  const endpoint = appwriteConfig.endpoint.replace(/\/$/, "");
+  const queries = [
+    JSON.stringify({
+      method: "equal",
+      attribute: "recommendationId",
+      values: [input.recommendationId],
+    }),
+    JSON.stringify({ method: "equal", attribute: "read", values: [false] }),
+    JSON.stringify({ method: "limit", values: [100] }),
+  ];
+  const qs = queries
+    .map((q) => `queries[]=${encodeURIComponent(q)}`)
+    .join("&");
+
+  const listRes = await fetch(
+    `${endpoint}/databases/${appwriteConfig.databaseId}/collections/notifications/documents?${qs}`,
+    {
+      headers: appwriteHeaders(apiKey),
+      cache: "no-store",
+    }
+  );
+  if (!listRes.ok) return 0;
+
+  const body = await listRes.json();
+  const docs = body.documents || [];
+  let marked = 0;
+
+  for (const doc of docs) {
+    if (!doc.$id) continue;
+    if (input.actionId && doc.actionId && doc.actionId !== input.actionId) {
+      continue;
+    }
+    const patchRes = await fetch(
+      `${endpoint}/databases/${appwriteConfig.databaseId}/collections/notifications/documents/${doc.$id}`,
+      {
+        method: "PATCH",
+        headers: appwriteHeaders(apiKey),
+        body: JSON.stringify({ data: { read: true } }),
+      }
+    );
+    if (patchRes.ok) marked += 1;
+  }
+
+  return marked;
+}
+
+/**
  * @param {string} apiKey
  * @param {string} userId
  * @param {string} [preferredEmail]

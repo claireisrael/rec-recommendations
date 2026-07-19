@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { isEvidenceLink, formatEvidenceLinkLabel } from "@/lib/evidence";
+import {
+  isEvidenceLink,
+  formatEvidenceLinkLabel,
+  getEvidenceRef,
+  getEvidenceFileName,
+} from "@/lib/evidence";
 import { uploadEvidenceFile, getEvidenceFileUrl } from "@/lib/appwrite/storage";
 import { appwriteConfig } from "@/lib/appwrite/config";
 import { Label } from "@/components/ui/label";
@@ -12,8 +17,8 @@ import { toast } from "sonner";
 
 /**
  * @param {{
- *   evidence?: string[];
- *   onChange: (evidence: string[]) => void;
+ *   evidence?: import("@/lib/evidence").EvidenceItem[];
+ *   onChange: (evidence: import("@/lib/evidence").EvidenceItem[]) => void;
  *   error?: string;
  * }} props
  */
@@ -39,15 +44,19 @@ export function ActionEvidenceField({ evidence = [], onChange, error }) {
 
     setUploading(true);
     try {
+      /** @type {import("@/lib/evidence").EvidenceFile[]} */
       const uploaded = [];
       for (const file of Array.from(files)) {
         const result = await uploadEvidenceFile(file);
-        uploaded.push(result.fileId);
+        uploaded.push({
+          fileId: result.fileId,
+          fileName: result.fileName || file.name,
+        });
       }
       onChange([...evidence, ...uploaded]);
       toast.success(
         uploaded.length === 1
-          ? "Document uploaded"
+          ? `Uploaded “${uploaded[0].fileName}”`
           : `${uploaded.length} documents uploaded`
       );
     } catch (err) {
@@ -73,54 +82,60 @@ export function ActionEvidenceField({ evidence = [], onChange, error }) {
     <div className="space-y-3">
       <Label>Action Evidence (optional)</Label>
       <p className="text-xs text-muted font-light">
-        Add links or upload documents proving this action.
+        Add links or upload documents proving this action. Click a document to
+        open it.
       </p>
 
       {evidence.length > 0 && (
         <ul className="space-y-1.5">
-          {evidence.map((item, i) => (
-            <li
-              key={i}
-              className="flex items-center justify-between gap-2 rounded-lg border border-border bg-gray-50 px-3 py-2"
-            >
-              <span className="flex items-center gap-2 text-sm text-gray-700 min-w-0 flex-1">
-                {isEvidenceLink(item) ? (
-                  <>
-                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-primary" />
-                    <a
-                      href={item}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="truncate text-primary underline-offset-2 hover:underline"
-                      title={item}
-                    >
-                      {formatEvidenceLinkLabel(item)}
-                    </a>
-                  </>
-                ) : (
-                  <>
-                    <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
-                    <a
-                      href={getEvidenceFileUrl(item)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="truncate text-primary underline-offset-2 hover:underline"
-                    >
-                      Uploaded document
-                    </a>
-                  </>
-                )}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => removeItem(i)}
+          {evidence.map((item, i) => {
+            const ref = getEvidenceRef(item);
+            if (!ref) return null;
+            return (
+              <li
+                key={`${ref}-${i}`}
+                className="flex items-center justify-between gap-2 rounded-lg border border-border bg-gray-50 px-3 py-2"
               >
-                <X className="h-4 w-4" />
-              </Button>
-            </li>
-          ))}
+                <span className="flex min-w-0 flex-1 items-center gap-2 text-sm text-gray-700">
+                  {isEvidenceLink(item) ? (
+                    <>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-primary" />
+                      <a
+                        href={ref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="truncate text-primary underline-offset-2 hover:underline"
+                        title={ref}
+                      >
+                        {formatEvidenceLinkLabel(ref)}
+                      </a>
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
+                      <a
+                        href={getEvidenceFileUrl(ref)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="truncate text-primary underline-offset-2 hover:underline"
+                        title={`Open ${getEvidenceFileName(item)}`}
+                      >
+                        {getEvidenceFileName(item)}
+                      </a>
+                    </>
+                  )}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeItem(i)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -139,7 +154,7 @@ export function ActionEvidenceField({ evidence = [], onChange, error }) {
         </Button>
       </div>
 
-      <label className="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-4 py-4 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors">
+      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-4 py-4 transition-colors hover:border-primary/40 hover:bg-primary/5">
         {uploading ? (
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
         ) : (
@@ -158,7 +173,7 @@ export function ActionEvidenceField({ evidence = [], onChange, error }) {
         />
       </label>
 
-      {error && <p className="text-red-500 text-xs">{error}</p>}
+      {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );
 }

@@ -113,7 +113,7 @@ export function RecommendationForm({
 
   /**
    * @param {number} index
-   * @param {string[]} evidence
+   * @param {import("@/lib/evidence").EvidenceItem[]} evidence
    */
   const updateActionEvidence = (index, evidence) => {
     setValue(`actions.${index}.evidence`, evidence, {

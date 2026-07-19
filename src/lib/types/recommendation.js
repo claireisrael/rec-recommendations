@@ -29,7 +29,7 @@ export const STATUS_COLORS = {
  * @property {string} text
  * @property {import("@/lib/score").ScoreTierKey} scoreTier
  * @property {string} partner
- * @property {string[]} evidence
+ * @property {import("@/lib/evidence").EvidenceItem[]} evidence
  * @property {import("@/lib/action-review").ActionReviewMeta} review
  */
 

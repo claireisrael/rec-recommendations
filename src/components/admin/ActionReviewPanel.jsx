@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Dialog } from "@/components/ui/dialog";
+import { ActionEvidenceField } from "@/components/admin/ActionEvidenceField";
 import { getAccount } from "@/lib/appwrite/client";
 import { toast } from "sonner";
 import { revalidateGuestPortal } from "@/lib/revalidate-guest";
@@ -27,6 +28,7 @@ import {
   ClipboardCheck,
   MessageSquare,
   MessageSquareWarning,
+  Pencil,
   Send,
   ShieldCheck,
   Sparkles,
@@ -134,10 +136,19 @@ export function ActionReviewPanel({
   const [remark, setRemark] = useState("");
   const [busy, setBusy] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
+  const [showL1Edits, setShowL1Edits] = useState(false);
+  const [editText, setEditText] = useState(action.text || "");
+  /** @type {[import("@/lib/evidence").EvidenceItem[], import("react").Dispatch<import("react").SetStateAction<import("@/lib/evidence").EvidenceItem[]>>]} */
+  const [editEvidence, setEditEvidence] = useState(() => [
+    ...(action.evidence || []),
+  ]);
 
   useEffect(() => {
     setScore(toScoreTierKey(action.scoreTier));
-  }, [action.scoreTier, action.id]);
+    setEditText(action.text || "");
+    setEditEvidence([...(action.evidence || [])]);
+    setShowL1Edits(false);
+  }, [action.scoreTier, action.id, action.text, action.evidence]);
 
   useEffect(() => {
     const options = getAssignableL1Reviewers(userEmail);
@@ -148,6 +159,7 @@ export function ActionReviewPanel({
     );
   }, [userEmail]);
 
+  const isResubmit = status === "changes_requested";
   const canSubmitL1 =
     status === "draft" || status === "changes_requested";
   const isAssignedL1 =
@@ -179,14 +191,21 @@ export function ActionReviewPanel({
       await revalidateGuestPortal();
       const actionName = String(payload.action || "");
       if (actionName === "l1_approve") {
-        toast.success("Approved and forwarded for final approval");
-      } else if (
-        actionName === "l1_request_changes" ||
-        actionName === "superadmin_request_changes"
-      ) {
-        toast.success("Changes requested successfully");
+        toast.success(
+          l1HasPendingEdits
+            ? "Edits saved — assignee notified — sent to Superadmin"
+            : "Sent to Superadmin for publication"
+        );
+      } else if (actionName === "l1_request_changes") {
+        toast.success("Sent back to the assignee with your feedback");
+      } else if (actionName === "superadmin_request_changes") {
+        toast.success("Sent back with your feedback");
       } else if (actionName === "submit_l1") {
-        toast.success("Submitted for Level 1 review");
+        toast.success(
+          isResubmit
+            ? "Resent to Level 1 for review"
+            : "Submitted for Level 1 review"
+        );
         setSubmitOpen(false);
       } else if (actionName === "superadmin_publish") {
         toast.success("Published successfully");
@@ -203,6 +222,26 @@ export function ActionReviewPanel({
       setBusy(false);
     }
   };
+
+  const sendToSuperadmin = () => {
+    /** @type {Record<string, unknown>} */
+    const payload = { action: "l1_approve", score, remark };
+    if (showL1Edits) {
+      const trimmed = editText.trim();
+      if (!trimmed) {
+        toast.error("Action text cannot be empty");
+        return;
+      }
+      payload.editedActionText = trimmed;
+      payload.editedEvidence = editEvidence;
+    }
+    return run(payload);
+  };
+
+  const l1HasPendingEdits =
+    showL1Edits &&
+    (editText.trim() !== (action.text || "").trim() ||
+      JSON.stringify(editEvidence) !== JSON.stringify(action.evidence || []));
 
   const statusStyle = REVIEW_STATUS_STYLES[status];
   const StatusIcon = statusStyle.icon;
@@ -350,7 +389,9 @@ export function ActionReviewPanel({
       {canSubmitL1 && !canL1Review && !canFinalPublish && (
         <div className="space-y-3 border-t border-border pt-3">
           <p className="text-sm font-medium text-foreground/85">
-            When this action is ready, submit it for Level 1 review.
+            {isResubmit
+              ? "You have addressed the Level 1 feedback. Resend this action for Level 1 review."
+              : "When this action is ready, submit it for Level 1 review."}
           </p>
           <Button
             type="button"
@@ -359,7 +400,7 @@ export function ActionReviewPanel({
             onClick={() => setSubmitOpen(true)}
           >
             <Send className="h-4 w-4" />
-            Submit for L1 review
+            {isResubmit ? "Resend to L1 for review" : "Submit for L1 review"}
           </Button>
         </div>
       )}
@@ -374,10 +415,12 @@ export function ActionReviewPanel({
             <Send className="h-6 w-6" />
           </div>
           <h2 className="pr-8 text-xl font-bold text-primary">
-            Submit for L1 review?
+            {isResubmit ? "Resend to L1 for review?" : "Submit for L1 review?"}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">
-            {refLabel} Action {actionIndex + 1} will be sent for Level 1 review.
+            {isResubmit
+              ? `${refLabel} Action ${actionIndex + 1} will go back to your Level 1 approver with your updates.`
+              : `${refLabel} Action ${actionIndex + 1} will be sent for Level 1 review.`}
           </p>
 
           {choosesL1 && peerL1Options.length > 0 ? (
@@ -439,7 +482,13 @@ export function ActionReviewPanel({
                 })
               }
             >
-              {busy ? "Submitting…" : "Submit for L1 review"}
+              {busy
+                ? isResubmit
+                  ? "Resending…"
+                  : "Submitting…"
+                : isResubmit
+                  ? "Resend to L1 for review"
+                  : "Submit for L1 review"}
             </Button>
           </div>
         </div>
@@ -449,16 +498,76 @@ export function ActionReviewPanel({
         <div className="space-y-3 border-t border-border pt-3">
           <div className="flex items-center gap-2 text-base font-semibold text-primary">
             <ClipboardCheck className="h-4 w-4 text-secondary-dark" />
-            Your Level 1 score for Action {actionIndex + 1}
+            Your Level 1 review for Action {actionIndex + 1}
           </div>
+          <p className="text-sm font-medium text-foreground/80">
+            Score the action, then either send it to Superadmin for publication
+            or bounce it back to the assignee with clear feedback.
+          </p>
           <ScoreLegend />
           <Label>Score Rating</Label>
           <ScoreTierSelect value={score} onChange={setScore} />
-          <Label>Remark / feedback</Label>
+
+          <div className="rounded-lg border border-[rgba(5,70,83,0.12)] bg-[#f8fafb] p-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                <Pencil className="h-4 w-4" />
+                Edit without bouncing back
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant={showL1Edits ? "default" : "outline"}
+                disabled={busy}
+                onClick={() => setShowL1Edits((v) => !v)}
+              >
+                {showL1Edits ? "Hide editor" : "Edit assignee’s action"}
+              </Button>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-muted">
+              Prefer a small fix yourself? Edit the action here, then send it
+              straight to Superadmin. The assignee gets an email and a Review
+              inbox notice naming you as their Level 1 approver, what you
+              changed, and that it was not sent back to them.
+            </p>
+            {showL1Edits && (
+              <div className="mt-3 space-y-3 border-t border-[rgba(5,70,83,0.08)] pt-3">
+                <div>
+                  <Label>Action text</Label>
+                  <Textarea
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    className="mt-1.5 min-h-[90px] bg-white text-foreground"
+                  />
+                </div>
+                <ActionEvidenceField
+                  evidence={editEvidence}
+                  onChange={setEditEvidence}
+                />
+                {l1HasPendingEdits && (
+                  <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-medium text-sky-900">
+                    Your edits will be saved. The assignee will be notified that{" "}
+                    <span className="font-bold">you</span> edited this action
+                    and submitted it to Superadmin for publication.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <Label>
+            {showL1Edits
+              ? "Note to the assignee (optional — included in their notification)"
+              : "Remark / feedback"}
+          </Label>
           <Textarea
             value={remark}
             onChange={(e) => setRemark(e.target.value)}
-            placeholder="Required when requesting changes — tell them what to update"
+            placeholder={
+              showL1Edits
+                ? "Optional note explaining your edits (sent to the assignee)"
+                : "Required when sending back to the assignee — tell them what to update"
+            }
             className="min-h-[70px] bg-white text-foreground"
           />
           <div className="flex flex-wrap gap-2">
@@ -466,10 +575,12 @@ export function ActionReviewPanel({
               type="button"
               size="sm"
               disabled={busy}
-              onClick={() => run({ action: "l1_approve", score, remark })}
+              onClick={() => sendToSuperadmin()}
             >
               <CheckCircle2 className="h-4 w-4" />
-              Approve & send for final approval
+              {l1HasPendingEdits
+                ? "Save edits & send to Superadmin for publication"
+                : "Send to Superadmin for publication"}
             </Button>
             <Button
               type="button"
@@ -479,12 +590,12 @@ export function ActionReviewPanel({
               onClick={() => run({ action: "l1_request_changes", remark })}
             >
               <MessageSquareWarning className="h-4 w-4" />
-              Request changes
+              Send back to assignee
             </Button>
           </div>
-          {!remark.trim() && (
+          {!remark.trim() && !showL1Edits && (
             <p className="text-sm font-medium text-foreground/80">
-              Add a remark explaining what needs to be updated.
+              Add a remark before sending this action back to the assignee.
             </p>
           )}
         </div>
@@ -509,7 +620,7 @@ export function ActionReviewPanel({
           <Textarea
             value={remark}
             onChange={(e) => setRemark(e.target.value)}
-            placeholder="Required when requesting changes — tell them what to update"
+            placeholder="Required when sending back — tell them what to update"
             className="min-h-[70px] bg-white text-foreground"
           />
           <div className="flex flex-wrap gap-2">
@@ -532,12 +643,12 @@ export function ActionReviewPanel({
                 run({ action: "superadmin_request_changes", remark })
               }
             >
-              Request changes
+              Send back with feedback
             </Button>
           </div>
           {!remark.trim() && (
             <p className="text-sm font-medium text-foreground/80">
-              Add a remark explaining what needs to be updated.
+              Add a remark before sending this action back.
             </p>
           )}
         </div>

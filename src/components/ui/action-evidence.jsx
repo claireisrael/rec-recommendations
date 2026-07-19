@@ -1,6 +1,12 @@
 "use client";
 
-import { hasEvidence, isEvidenceLink, formatEvidenceLinkLabel } from "@/lib/evidence";
+import {
+  hasEvidence,
+  isEvidenceLink,
+  formatEvidenceLinkLabel,
+  getEvidenceRef,
+  getEvidenceFileName,
+} from "@/lib/evidence";
 import { getEvidenceFileUrl } from "@/lib/appwrite/storage";
 import { ExternalLink, FileText } from "lucide-react";
 
@@ -15,12 +21,12 @@ const iconSize = {
 };
 
 const documentClass =
-  "inline-flex items-center rounded-md font-semibold text-white bg-slate-600 hover:bg-slate-700 transition-colors";
+  "inline-flex max-w-full items-center rounded-md font-semibold text-white bg-slate-600 hover:bg-slate-700 transition-colors";
 const linkClass =
-  "inline-flex items-center rounded-md font-semibold text-white bg-primary hover:bg-primary-dark transition-colors";
+  "inline-flex max-w-full items-center rounded-md font-semibold text-white bg-primary hover:bg-primary-dark transition-colors";
 
 /**
- * @param {{ evidence?: string[], size?: "sm" | "md" }} props
+ * @param {{ evidence?: import("@/lib/evidence").EvidenceItem[], size?: "sm" | "md" }} props
  */
 export function ActionEvidenceDisplay({ evidence = [], size = "sm" }) {
   if (!hasEvidence(evidence)) return null;
@@ -30,38 +36,47 @@ export function ActionEvidenceDisplay({ evidence = [], size = "sm" }) {
 
   return (
     <ul className="flex flex-wrap gap-1.5">
-      {evidence.map((item, i) =>
-        isEvidenceLink(item) ? (
-          <li key={i}>
+      {evidence.map((item, i) => {
+        const ref = getEvidenceRef(item);
+        if (!ref) return null;
+
+        if (isEvidenceLink(item)) {
+          return (
+            <li key={`${ref}-${i}`}>
+              <a
+                href={ref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${linkClass} ${sizing}`}
+                onClick={(e) => e.stopPropagation()}
+                title={ref}
+              >
+                <ExternalLink className={`${icon} shrink-0`} />
+                <span className="truncate max-w-[180px]">
+                  {formatEvidenceLinkLabel(ref)}
+                </span>
+              </a>
+            </li>
+          );
+        }
+
+        const name = getEvidenceFileName(item);
+        return (
+          <li key={`${ref}-${i}`}>
             <a
-              href={item}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`${linkClass} ${sizing}`}
-              onClick={(e) => e.stopPropagation()}
-              title={item}
-            >
-              <ExternalLink className={`${icon} shrink-0`} />
-              <span className="truncate max-w-[180px]">
-                {formatEvidenceLinkLabel(item)}
-              </span>
-            </a>
-          </li>
-        ) : (
-          <li key={i}>
-            <a
-              href={getEvidenceFileUrl(item)}
+              href={getEvidenceFileUrl(ref)}
               target="_blank"
               rel="noopener noreferrer"
               className={`${documentClass} ${sizing}`}
               onClick={(e) => e.stopPropagation()}
+              title={`Open ${name}`}
             >
               <FileText className={`${icon} shrink-0`} />
-              View document {evidence.length > 1 ? i + 1 : ""}
+              <span className="truncate max-w-[200px]">{name}</span>
             </a>
           </li>
-        )
-      )}
+        );
+      })}
     </ul>
   );
 }
