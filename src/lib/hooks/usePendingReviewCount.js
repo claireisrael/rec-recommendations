@@ -18,7 +18,7 @@ export function usePendingReviewCount() {
     }
     try {
       const jwt = await getAccount().createJWT();
-      const list = await listNotificationsForUser(jwt.jwt, user.$id);
+      const list = await listNotificationsForUser(jwt.jwt);
       const unread = list.filter((n) => !n.read).length;
       setCount(unread);
     } catch {

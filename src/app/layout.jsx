@@ -1,13 +1,7 @@
-import { Inter } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { AppwriteProvider } from "@/components/providers/AppwriteProvider";
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-inter",
-  display: "swap",
-});
 
 export const metadata = {
   title: "REC Recommendations & Actions",
@@ -20,9 +14,12 @@ export const metadata = {
  */
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${inter.variable} h-full`}>
+    <html
+      lang="en"
+      className={`${GeistSans.variable} ${GeistMono.variable} h-full`}
+    >
       <body
-        className={`${inter.className} min-h-full flex flex-col font-sans antialiased`}
+        className={`${GeistSans.className} min-h-full flex flex-col font-sans`}
       >
         <AppwriteProvider>{children}</AppwriteProvider>
       </body>

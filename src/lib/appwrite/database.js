@@ -285,7 +285,6 @@ export async function getGlobalStats(serverSide = false) {
   const allActionScores = recommendations.flatMap((r) =>
     r.actions.map((a) => resolveScoreTier(a.scoreTier).value)
   );
-  const years = recommendations.map((r) => r.year);
   const averageScore =
     allActionScores.length > 0
       ? Math.round(
@@ -297,10 +296,7 @@ export async function getGlobalStats(serverSide = false) {
     totalRecommendations: recommendations.length,
     averageScore,
     totalActionPartners: countUniqueActionPartners(recommendations),
-    yearRange:
-      years.length > 0
-        ? { min: Math.min(...years), max: Math.max(...years) }
-        : null,
+    yearRange: { min: 2025, max: 2026 },
   };
 }
 

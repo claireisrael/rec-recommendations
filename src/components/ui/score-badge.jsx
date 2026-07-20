@@ -32,7 +32,7 @@ export function ScoreBadge({
       title={`${formatScoreRange(tier)} · ${tier.label}`}
     >
       {showValue && (
-        <span className="font-bold tabular-nums">{formatScoreRange(tier)}</span>
+        <span className="font-semibold tabular-nums">{formatScoreRange(tier)}</span>
       )}
       <span>{tier.label}</span>
     </span>
@@ -50,7 +50,7 @@ export function ActionScoreDot({ scoreTier, className }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white text-[9px] leading-none px-1",
+        "inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white text-[9px] leading-none px-1",
         "min-w-7 h-7",
         className
       )}

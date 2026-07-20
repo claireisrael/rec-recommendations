@@ -12,12 +12,11 @@ const emptyGlobalStats = {
   totalRecommendations: 0,
   averageScore: 0,
   totalActionPartners: 0,
-  yearRange: null,
+  yearRange: { min: 2025, max: 2026 },
 };
 
 /** @param {import("@/lib/types/recommendation").Recommendation[]} recs */
 function statsFromPublic(recs) {
-  const years = recs.map((r) => r.year);
   const allScores = recs.flatMap((r) =>
     r.actions.map((a) => resolveScoreTier(a.scoreTier).value)
   );
@@ -28,10 +27,7 @@ function statsFromPublic(recs) {
         ? Math.round(allScores.reduce((s, n) => s + n, 0) / allScores.length)
         : 0,
     totalActionPartners: countUniqueActionPartners(recs),
-    yearRange:
-      years.length > 0
-        ? { min: Math.min(...years), max: Math.max(...years) }
-        : null,
+    yearRange: { min: 2025, max: 2026 },
   };
 }
 

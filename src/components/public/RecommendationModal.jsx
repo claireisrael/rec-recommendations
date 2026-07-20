@@ -50,7 +50,7 @@ export function RecommendationModal({
                 size="md"
               />
             </div>
-            <h2 className="text-2xl font-bold text-primary leading-tight">
+            <h2 className="text-2xl font-semibold text-primary leading-tight">
               {recommendation.recommendation}
             </h2>
           </div>
@@ -65,7 +65,7 @@ export function RecommendationModal({
               {recommendation.actions.map((action, i) => (
                 <li
                   key={i}
-                  className="relative flex items-start gap-3 overflow-hidden rounded-xl border border-[rgba(5,70,83,0.1)] p-3 text-sm text-[#1f2937]"
+                  className="relative flex items-start gap-3 overflow-hidden rounded-xl border border-[rgba(46, 158, 204,0.1)] p-3 text-sm text-[#1f2937]"
                   style={{ backgroundColor: getScoreBgColor(action.scoreTier) }}
                 >
                   <span

@@ -32,6 +32,48 @@ export const SUPERADMIN = SUPERADMINS[0];
 export const FINAL_PUBLISHER_EMAIL = staffConfig.finalPublisherEmail;
 
 /**
+ * Real display name from staff directory — avoids Appwrite account labels like "superadmin".
+ * @param {string | undefined | null} email
+ * @param {string | undefined | null} [fallback]
+ * @returns {string}
+ */
+export function resolveStaffDisplayName(email, fallback) {
+  const staff = getRoleUserByEmail(email);
+  if (staff?.name?.trim()) return staff.name.trim();
+  const fb = (fallback || "").trim();
+  if (fb && !/^superadmin$/i.test(fb)) return fb;
+  const norm = normalizeEmail(email);
+  if (norm.includes("@")) {
+    const local = norm.split("@")[0] || "";
+    if (local) {
+      return local.charAt(0).toUpperCase() + local.slice(1);
+    }
+  }
+  return fb || "Team member";
+}
+
+/**
+ * Staff record for whoever publishes to the public portal.
+ * @returns {import("./roles-types").RoleUser | undefined}
+ */
+export function getFinalPublisherUser() {
+  const byEmail = getRoleUserByEmail(FINAL_PUBLISHER_EMAIL);
+  if (byEmail) return byEmail;
+  return (
+    SUPERADMINS.find(
+      (u) => normalizeEmail(u.email) === normalizeEmail(FINAL_PUBLISHER_EMAIL)
+    ) || SUPERADMIN
+  );
+}
+
+/**
+ * @returns {string}
+ */
+export function getFinalPublisherDisplayName() {
+  return getFinalPublisherUser()?.name?.trim() || "Final publisher";
+}
+
+/**
  * @param {string | undefined | null} email
  * @returns {boolean}
  */

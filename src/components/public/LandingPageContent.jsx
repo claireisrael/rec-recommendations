@@ -30,7 +30,7 @@ export function LandingPageContent({ className, preview = false }) {
       </div>
 
       {/* Info panel — torn clip on the split edge reveals photos underneath */}
-      <div className="landing-panel-info relative z-10 order-1 flex flex-col justify-between w-full lg:w-[48%] xl:w-[45%] min-h-[55vh] lg:min-h-screen bg-gradient-to-br from-[#033540] via-primary-dark to-primary px-8 sm:px-12 lg:px-14 xl:px-20 py-10 lg:py-12">
+      <div className="landing-panel-info relative z-10 order-1 flex flex-col justify-between w-full lg:w-[48%] xl:w-[45%] min-h-[55vh] lg:min-h-screen bg-gradient-to-br from-[#357C9D] via-primary-dark to-primary px-8 sm:px-12 lg:px-14 xl:px-20 py-10 lg:py-12">
         <div
           className="absolute inset-0 overflow-hidden pointer-events-none"
           aria-hidden
@@ -47,16 +47,16 @@ export function LandingPageContent({ className, preview = false }) {
         </header>
 
         <div className="relative z-10 flex-1 flex flex-col justify-center py-10 lg:py-0">
-          <p className="landing-eyebrow text-xs sm:text-sm font-extrabold tracking-[0.35em] uppercase mb-6">
+          <p className="landing-eyebrow text-xs sm:text-sm font-medium tracking-[0.35em] uppercase mb-6">
             Renewable Energy Conference
           </p>
 
-          <h1 className="landing-heading text-4xl sm:text-5xl xl:text-[3.5rem] font-extrabold leading-[1.05] tracking-tight mb-6">
+          <h1 className="landing-heading text-4xl sm:text-5xl xl:text-[3.5rem] font-semibold leading-[1.05] tracking-tight mb-6">
             Recommendations
             <span className="landing-heading-accent block mt-2">&amp; Actions</span>
           </h1>
 
-          <p className="landing-body text-base sm:text-lg font-medium leading-relaxed max-w-md mb-10">
+          <p className="landing-body text-base sm:text-lg font-normal leading-relaxed max-w-md mb-10">
             Follow every REC recommendation through to delivery — who is
             advancing it, the organisations behind each action, and progress
             across conference years.
@@ -66,7 +66,7 @@ export function LandingPageContent({ className, preview = false }) {
             <Link href="/guest" className="group">
               <Button
                 size="lg"
-                className="w-full sm:w-auto h-12 px-8 bg-secondary text-white hover:bg-secondary-dark font-semibold shadow-lg shadow-secondary/20 transition-all duration-300 group-hover:scale-[1.03]"
+                className="w-full sm:w-auto h-12 px-8 bg-secondary text-black hover:bg-secondary-dark font-semibold shadow-lg shadow-secondary/20 transition-all duration-300 group-hover:scale-[1.03]"
               >
                 <LayoutDashboard className="h-5 w-5" />
                 Guest Dashboard

@@ -182,7 +182,7 @@ export default function EditRecommendationPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold text-primary">
+          <h1 className="text-3xl font-semibold text-primary">
             Edit Recommendation
           </h1>
           <p className="mt-1 text-sm font-medium text-foreground/80">

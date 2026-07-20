@@ -38,7 +38,7 @@ export function ScoreRing({ score, size = 64, showLabel = false }) {
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-sm font-bold text-[#1f2937]">{score}</span>
+          <span className="text-sm font-semibold text-[#1f2937]">{score}</span>
         </div>
       </div>
       {showLabel && (

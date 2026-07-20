@@ -78,7 +78,7 @@ export default function NewRecommendationPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-primary">
+            <h1 className="text-3xl font-semibold text-primary">
               New Recommendation
             </h1>
             <p className="mt-1 text-sm font-medium text-foreground/80">

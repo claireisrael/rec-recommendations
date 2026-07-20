@@ -3,20 +3,24 @@ import { ACTION_REVIEW_STATUSES } from "@/lib/action-review";
 import {
   findUserIdByEmail,
   markActionNotificationsRead,
-  markAllActionNotificationsRead,
+  deleteActionNotificationThread,
   notifyUser,
 } from "@/lib/appwrite/notifications-server";
 import {
   canChooseL1Approver,
   getAssignableL1Reviewers,
   getDesignatedL1Reviewer,
+  getFinalPublisherDisplayName,
+  getFinalPublisherUser,
+  getRoleUserById,
   isFinalPublisher,
   isL1Reviewer,
   normalizeEmail,
-  SUPERADMIN,
+  resolveStaffDisplayName,
 } from "@/lib/roles";
 import { toScoreTierKey } from "@/lib/score";
 import { CATEGORY_LABELS, resolveCategory } from "@/lib/categories";
+import { buildReviewNotifyCopy } from "@/lib/review-notify-copy";
 import {
   buildRecommendationNumbering,
   getCategoryCode,
@@ -40,8 +44,8 @@ function normalizeScoreKey(raw) {
 
 /**
  * Who must be told when changes are requested:
- * 1) The submitter who sent the action for review
- * 2) Section assignees who own / edit that recommendation
+ * Prefer the submitter only. Fall back to section owners only when no
+ * submitter is recorded (keeps 6.1 mail off Clare — she owns 6.5/6.6).
  * @param {string} apiKey
  * @param {Record<string, unknown>} meta
  * @param {Record<string, unknown>} doc
@@ -75,9 +79,14 @@ async function resolveChangeRecipients(
 
   if (submitterId) {
     add(submitterId, submitterEmail, submitterName);
-  } else if (submitterEmail) {
+    return [...byId.values()];
+  }
+  if (submitterEmail) {
     const found = await findUserIdByEmail(apiKey, submitterEmail);
-    add(found, submitterEmail, submitterName);
+    if (found) {
+      add(found, submitterEmail, submitterName);
+      return [...byId.values()];
+    }
   }
 
   const category = resolveCategory(
@@ -123,7 +132,25 @@ async function notifyChangesRequested(
     );
   }
 
-  const roleLabel = input.actorName;
+  const copySet = buildReviewNotifyCopy(
+    {
+      displayCode: input.displayCode,
+      headline: input.headline,
+      detail: input.detail,
+      actionNo: input.actionNo,
+      actionText: input.actionText,
+    },
+    {
+      actorName: input.actorName,
+      publisherName: input.publisherName || "the final publisher",
+      remark: input.remark,
+    }
+  );
+  const copy =
+    input.actorRole === "l1"
+      ? copySet.changesRequestedL1
+      : copySet.changesRequestedPublisher;
+
   const errors = [];
 
   for (const t of targets) {
@@ -131,15 +158,11 @@ async function notifyChangesRequested(
       await notifyUser(apiKey, {
         userId: t.userId,
         email: t.email,
+        actorName: input.actorName,
         type: "changes_requested",
-        title:
-          input.actorRole === "l1"
-            ? `Sent back by L1 · ${input.displayCode}`
-            : `Changes requested · ${input.displayCode}`,
-        body:
-          input.actorRole === "l1"
-            ? `${roleLabel} (Level 1 approver) sent ${input.detail} under ${input.headline} back to you for updates: ${input.remark}`
-            : `${roleLabel} asked for updates on ${input.detail} under ${input.headline}: ${input.remark}`,
+        title: copy.title,
+        body: copy.body,
+        emailDetail: copy.emailDetail,
         recommendationId: input.recommendationId,
         actionId: input.actionId,
       });
@@ -385,14 +408,24 @@ export async function POST(request) {
   const notifyActionId = String(meta.id);
   const now = new Date().toISOString();
   const actorEmail = account.email;
-  const actorName = account.name || actorEmail;
+  const actorName = resolveStaffDisplayName(actorEmail, account.name || actorEmail);
   const actorId = account.$id;
+  const finalPublisher = getFinalPublisherUser();
+  const finalPublisherName = getFinalPublisherDisplayName();
   const ref = await resolveRecommendationRef(
     cfg,
     doc,
     recommendationId,
     index
   );
+
+  /** Clear, structured copy for inbox + email. */
+  const notifyCopy = (extra = {}) =>
+    buildReviewNotifyCopy(ref, {
+      actorName,
+      publisherName: finalPublisherName,
+      ...extra,
+    });
 
   const pushFeedback = (fromRole, message) => {
     meta.feedback.push({
@@ -411,8 +444,20 @@ export async function POST(request) {
       const assignable = getAssignableL1Reviewers(actorEmail);
       const designated = getDesignatedL1Reviewer(actorEmail);
       let reviewer = designated;
+      const wasChangesRequested = meta.status === "changes_requested";
 
-      if (canChooseL1Approver(actorEmail)) {
+      // Resubmit stays on the same L1 already in the communication line.
+      if (wasChangesRequested && meta.l1ReviewerId) {
+        reviewer =
+          assignable.find((u) => u.userId === meta.l1ReviewerId) ||
+          getRoleUserById(String(meta.l1ReviewerId)) ||
+          {
+            userId: String(meta.l1ReviewerId),
+            name: String(meta.l1ReviewerName || "Level 1 reviewer"),
+            email: String(meta.l1ReviewerEmail || ""),
+            role: "l1_reviewer",
+          };
+      } else if (canChooseL1Approver(actorEmail)) {
         reviewer =
           assignable.find((u) => u.userId && u.userId === l1ReviewerId) ||
           undefined;
@@ -425,7 +470,7 @@ export async function POST(request) {
             { status: 400 }
           );
         }
-      } else if (!designated?.userId) {
+      } else if (!designated?.email) {
         return NextResponse.json(
           {
             message:
@@ -433,7 +478,11 @@ export async function POST(request) {
           },
           { status: 400 }
         );
-      } else if (l1ReviewerId && l1ReviewerId !== designated.userId) {
+      } else if (
+        l1ReviewerId &&
+        designated.userId &&
+        l1ReviewerId !== designated.userId
+      ) {
         return NextResponse.json(
           {
             message: `Your Level 1 reviewer is ${designated.name}. You cannot assign a different reviewer.`,
@@ -442,12 +491,21 @@ export async function POST(request) {
         );
       }
 
-      if (!reviewer?.userId) {
+      let resolvedL1Id = reviewer?.userId || "";
+      if (!resolvedL1Id && reviewer?.email) {
+        resolvedL1Id =
+          (await findUserIdByEmail(cfg.apiKey, reviewer.email)) || "";
+      }
+      if (!reviewer || !resolvedL1Id) {
         return NextResponse.json(
-          { message: "Could not resolve Level 1 reviewer." },
+          {
+            message:
+              "Could not resolve Level 1 reviewer. Ensure their Appwrite user id is set in staff config.",
+          },
           { status: 400 }
         );
       }
+      reviewer = { ...reviewer, userId: resolvedL1Id };
       const contributorScore = normalizeScoreKey(scores[index]);
       if (!contributorScore) {
         return NextResponse.json(
@@ -458,7 +516,6 @@ export async function POST(request) {
       // Persist REC enum key so later review steps stay valid
       scores[index] = contributorScore;
 
-      const wasChangesRequested = meta.status === "changes_requested";
       const priorFeedback =
         Array.isArray(meta.feedback) && meta.feedback.length > 0
           ? meta.feedback[meta.feedback.length - 1]
@@ -473,53 +530,72 @@ export async function POST(request) {
       meta.l1ReviewerName = reviewer.name;
       meta.l1ReviewerEmail = reviewer.email;
 
-      if (reviewer.userId) {
-        if (wasChangesRequested) {
-          const feedbackSnippet =
-            priorFeedback?.message
-              ? ` Their earlier feedback was: “${String(priorFeedback.message).slice(0, 220)}”`
-              : "";
-          afterSave.push(() =>
-            safeNotify(() =>
-              notifyUser(cfg.apiKey, {
-                userId: reviewer.userId,
-                email: reviewer.email,
-                type: "feedback_responded",
-                title: `Feedback addressed · ${ref.displayCode}`,
-                body: `${actorName} updated ${ref.detail} under ${ref.headline} in response to your feedback and resent it for your Level 1 review.${feedbackSnippet}`,
-                recommendationId,
-                actionId: notifyActionId,
-              })
-            )
+      if (reviewer.userId || reviewer.email) {
+        const l1UserId =
+          reviewer.userId ||
+          (await findUserIdByEmail(cfg.apiKey, reviewer.email)) ||
+          "";
+        if (!l1UserId) {
+          console.error(
+            "[reviews] submit_l1: could not resolve L1 userId for",
+            reviewer.email
           );
         } else {
-          afterSave.push(() =>
-            safeNotify(() =>
-              notifyUser(cfg.apiKey, {
-                userId: reviewer.userId,
-                email: reviewer.email,
-                type: "l1_review_requested",
-                title: `Review needed · ${ref.displayCode}`,
-                body: `${actorName} assigned you to review ${ref.detail} under ${ref.headline} (${ref.year}): “${ref.title}”. Open the full recommendation, then rate the action.`,
-                recommendationId,
-                actionId: notifyActionId,
-              })
-            )
-          );
+          meta.l1ReviewerId = l1UserId;
+          if (wasChangesRequested) {
+            const copy = notifyCopy({
+              remark: priorFeedback?.message
+                ? String(priorFeedback.message).slice(0, 280)
+                : undefined,
+            }).feedbackResponded;
+            afterSave.push(() =>
+              safeNotify(() =>
+                notifyUser(cfg.apiKey, {
+                  userId: l1UserId,
+                  email: reviewer.email,
+                  actorName,
+                  type: "feedback_responded",
+                  title: copy.title,
+                  body: copy.body,
+                  emailDetail: copy.emailDetail,
+                  recommendationId,
+                  actionId: notifyActionId,
+                })
+              )
+            );
+          } else {
+            const copy = notifyCopy().l1ReviewRequested;
+            afterSave.push(() =>
+              safeNotify(() =>
+                notifyUser(cfg.apiKey, {
+                  userId: l1UserId,
+                  email: reviewer.email,
+                  actorName,
+                  type: "l1_review_requested",
+                  title: copy.title,
+                  body: copy.body,
+                  emailDetail: copy.emailDetail,
+                  recommendationId,
+                  actionId: notifyActionId,
+                })
+              )
+            );
+          }
         }
       }
 
       // Clear submitter's "changes requested" item for this action after resubmit
-      afterSave.push(() =>
-        safeNotify(() =>
-          markActionNotificationsRead(cfg.apiKey, {
-            userId: actorId,
-            recommendationId,
-            actionId: notifyActionId,
-            types: ["changes_requested"],
-          })
-        )
-      );
+        afterSave.push(() =>
+          safeNotify(() =>
+            markActionNotificationsRead(cfg.apiKey, {
+              userId: actorId,
+              email: actorEmail,
+              recommendationId,
+              actionId: notifyActionId,
+              types: ["changes_requested"],
+            })
+          )
+        );
     } else if (
       reviewAction === "l1_approve" ||
       reviewAction === "l1_request_changes"
@@ -602,7 +678,7 @@ export async function POST(request) {
             : "";
           pushFeedback(
             "l1_reviewer",
-            `${actorName} made minor edits to ${editedWhat} and sent this action to Superadmin for publication (without bouncing it back).${note}`
+            `${actorName} made minor edits to ${editedWhat} and sent this action to ${finalPublisherName} for publication (without bouncing it back).${note}`
           );
         } else if (meta.l1Remark) {
           pushFeedback("l1_reviewer", meta.l1Remark);
@@ -612,24 +688,37 @@ export async function POST(request) {
           safeNotify(() =>
             markActionNotificationsRead(cfg.apiKey, {
               userId: actorId,
+              email: actorEmail,
               recommendationId,
               actionId: notifyActionId,
-              types: ["l1_review_requested", "feedback_responded"],
+              types: [
+                "l1_review_requested",
+                "feedback_responded",
+                "final_returned_to_l1",
+              ],
             })
           )
         );
 
-        if (SUPERADMIN.userId) {
+        if (finalPublisher?.userId || finalPublisher?.email) {
+          const pubCopy = didEditContent
+            ? notifyCopy({
+                editedWhat,
+                remark: meta.l1Remark || undefined,
+              }).superadminReviewAfterEdit
+            : notifyCopy({
+                remark: meta.l1Remark || undefined,
+              }).superadminReview;
           afterSave.push(() =>
             safeNotify(() =>
               notifyUser(cfg.apiKey, {
-                userId: SUPERADMIN.userId,
-                email: SUPERADMIN.email,
+                userId: finalPublisher.userId,
+                email: finalPublisher.email,
+                actorName,
                 type: "superadmin_review_requested",
-                title: `Final review · ${ref.displayCode}`,
-                body: didEditContent
-                  ? `${actorName} (Level 1) edited ${editedWhat} on ${ref.detail} under ${ref.headline} and sent it to you for final review and publication.`
-                  : `${actorName} sent ${ref.detail} under ${ref.headline}: “${ref.title}” to Superadmin for final review and publication. Please set the final score and publish.`,
+                title: pubCopy.title,
+                body: pubCopy.body,
+                emailDetail: pubCopy.emailDetail,
                 recommendationId,
                 actionId: notifyActionId,
               })
@@ -637,90 +726,63 @@ export async function POST(request) {
           );
         }
 
-        if (didEditContent) {
-          // Always tell the assignee(s) — in-app Review inbox + email —
-          // naming the L1 approver and what they changed.
-          afterSave.push(async () => {
-            let targets = await resolveChangeRecipients(
-              cfg.apiKey,
-              meta,
-              doc,
-              actorId
-            );
-            if (targets.length === 0 && meta.submitterId) {
-              targets = [
-                {
-                  userId: meta.submitterId,
-                  email: meta.submitterEmail,
-                  name: meta.submitterName,
-                },
-              ];
-            }
-            const noteLine = meta.l1Remark
-              ? ` Message from ${actorName}: “${meta.l1Remark}”`
-              : "";
-            for (const t of targets) {
-              await safeNotify(() =>
-                notifyUser(cfg.apiKey, {
-                  userId: t.userId,
-                  email: t.email,
-                  type: "l1_edited_and_forwarded",
-                  title: `${actorName} edited your action · ${ref.displayCode}`,
-                  body: `${actorName}, your Level 1 approver, edited ${editedWhat} on ${ref.detail} under ${ref.headline}, then submitted it to the Superadmin for final review and publication — without sending it back to you.${noteLine} Open the recommendation in the portal to see the updated action.`,
-                  recommendationId,
-                  actionId: notifyActionId,
-                })
-              );
-            }
-          });
-        } else {
-          // No content edits — status update only for the submitter/assignee
-          const submitterId =
+        // Status / edit FYI — only the person who submitted this action
+        // (e.g. Silver for 6.1). Do NOT fan out to other section owners
+        // (Clare is 6.5/6.6 only and must not get Clean Cooking mail).
+        afterSave.push(async () => {
+          let submitterId =
             typeof meta.submitterId === "string"
               ? meta.submitterId.trim()
+              : "";
+          let submitterEmail =
+            typeof meta.submitterEmail === "string"
+              ? meta.submitterEmail.trim()
               : undefined;
-          if (submitterId) {
-            afterSave.push(() =>
-              safeNotify(() =>
-                notifyUser(cfg.apiKey, {
-                  userId: submitterId,
-                  email: meta.submitterEmail,
-                  type: "action_reviewed",
-                  title: `Pending Superadmin publication · ${ref.displayCode}`,
-                  body: `${actorName} sent ${ref.detail} under ${ref.headline} to the Superadmin for final review and publication${
-                    meta.l1Remark ? `: ${meta.l1Remark}` : "."
-                  }`,
-                  recommendationId,
-                  actionId: notifyActionId,
-                })
-              )
+
+          if (!submitterId && submitterEmail) {
+            submitterId =
+              (await findUserIdByEmail(cfg.apiKey, submitterEmail)) || "";
+          }
+
+          if (!submitterId) return;
+
+          if (didEditContent) {
+            const copy = notifyCopy({
+              editedWhat,
+              remark: meta.l1Remark || undefined,
+            }).l1EditedForwarded;
+            await safeNotify(() =>
+              notifyUser(cfg.apiKey, {
+                userId: submitterId,
+                email: submitterEmail,
+                actorName,
+                type: "l1_edited_and_forwarded",
+                title: copy.title,
+                body: copy.body,
+                emailDetail: copy.emailDetail,
+                recommendationId,
+                actionId: notifyActionId,
+              })
             );
           } else {
-            afterSave.push(async () => {
-              const fallback = await resolveChangeRecipients(
-                cfg.apiKey,
-                meta,
-                doc,
-                actorId
-              );
-              for (const t of fallback.slice(0, 1)) {
-                await safeNotify(() =>
-                  notifyUser(cfg.apiKey, {
-                    userId: t.userId,
-                    email: t.email,
-                    type: "action_reviewed",
-                    title: `Pending Superadmin publication · ${ref.displayCode}`,
-                    body: `${actorName} sent ${ref.detail} under ${ref.headline} to the Superadmin for final review and publication${
-                      meta.l1Remark ? `: ${meta.l1Remark}` : "."
-                    }`,
-                    recommendationId,
-                    actionId: notifyActionId,
-                  })
-                );
-              }
-            });
+            const copy = notifyCopy({
+              remark: meta.l1Remark || undefined,
+            }).actionReviewed;
+            await safeNotify(() =>
+              notifyUser(cfg.apiKey, {
+                userId: submitterId,
+                email: submitterEmail,
+                actorName,
+                type: "action_reviewed",
+                title: copy.title,
+                body: copy.body,
+                emailDetail: copy.emailDetail,
+                recommendationId,
+                actionId: notifyActionId,
+              })
+            );
           }
-        }
+        });
       } else {
         const changeRemark = (remark || "").trim();
         if (!changeRemark) {
@@ -753,9 +815,14 @@ export async function POST(request) {
           safeNotify(() =>
             markActionNotificationsRead(cfg.apiKey, {
               userId: actorId,
+              email: actorEmail,
               recommendationId,
               actionId: notifyActionId,
-              types: ["l1_review_requested", "feedback_responded"],
+              types: [
+                "l1_review_requested",
+                "feedback_responded",
+                "final_returned_to_l1",
+              ],
             })
           )
         );
@@ -764,12 +831,15 @@ export async function POST(request) {
             notifyChangesRequested(cfg.apiKey, targets, {
               actorName,
               actorRole: "l1",
+              publisherName: finalPublisherName,
               remark: changeRemark,
               recommendationId,
               actionId: notifyActionId,
               displayCode: ref.displayCode,
               detail: ref.detail,
               headline: ref.headline,
+              actionNo: ref.actionNo,
+              actionText: ref.actionText,
             })
           )
         );
@@ -800,32 +870,35 @@ export async function POST(request) {
           pushFeedback("superadmin", meta.superadminRemark);
         }
 
-        afterSave.push(() =>
-          safeNotify(() =>
-            markAllActionNotificationsRead(cfg.apiKey, {
+        // Wipe the full review-line thread for THIS action (all users).
+        // Email-only "published" notice — no inbox card left behind.
+        afterSave.push(async () => {
+          await safeNotify(() =>
+            deleteActionNotificationThread(cfg.apiKey, {
               recommendationId,
               actionId: notifyActionId,
             })
-          )
-        );
-
-        if (meta.submitterId) {
-          afterSave.push(() =>
-            safeNotify(() =>
+          );
+          if (meta.submitterId) {
+            const copy = notifyCopy({
+              remark: meta.superadminRemark || undefined,
+            }).published;
+            await safeNotify(() =>
               notifyUser(cfg.apiKey, {
                 userId: meta.submitterId,
                 email: meta.submitterEmail,
+                actorName,
                 type: "action_published",
-                title: `Published · ${ref.displayCode}`,
-                body: `${actorName} published ${ref.detail} under ${ref.headline}${
-                  meta.superadminRemark ? `: ${meta.superadminRemark}` : "."
-                }`,
+                title: copy.title,
+                body: copy.body,
+                emailDetail: copy.emailDetail,
                 recommendationId,
                 actionId: notifyActionId,
+                skipInApp: true,
               })
-            )
-          );
-        }
+            );
+          }
+        });
       } else {
         const changeRemark = (remark || "").trim();
         if (!changeRemark) {
@@ -834,50 +907,99 @@ export async function POST(request) {
             { status: 400 }
           );
         }
-        const targets = await resolveChangeRecipients(
-          cfg.apiKey,
-          meta,
-          doc,
-          actorId
-        );
-        if (targets.length === 0) {
+
+        // Final approver returns to the L1 who sent it — not straight to assignee.
+        const l1Id =
+          typeof meta.l1ReviewerId === "string"
+            ? meta.l1ReviewerId.trim()
+            : "";
+        const l1Email =
+          typeof meta.l1ReviewerEmail === "string"
+            ? meta.l1ReviewerEmail.trim()
+            : undefined;
+        const l1Name =
+          typeof meta.l1ReviewerName === "string" && meta.l1ReviewerName.trim()
+            ? meta.l1ReviewerName.trim()
+            : "Level 1 reviewer";
+
+        if (!l1Id && !l1Email) {
           return NextResponse.json(
             {
               message:
-                "No submitter or section owner found to notify. Changes were not recorded.",
+                "No Level 1 reviewer is recorded on this action. Cannot return it along the review line.",
             },
             { status: 400 }
           );
         }
-        meta.status = "changes_requested";
+
+        meta.status = "awaiting_l1";
         meta.superadminRemark = changeRemark;
         meta.superadminReviewedAt = now;
         pushFeedback("superadmin", changeRemark);
+
+        const copy = notifyCopy({
+          remark: changeRemark,
+          l1Name,
+        });
 
         afterSave.push(() =>
           safeNotify(() =>
             markActionNotificationsRead(cfg.apiKey, {
               userId: actorId,
+              email: actorEmail,
               recommendationId,
               actionId: notifyActionId,
               types: ["superadmin_review_requested"],
             })
           )
         );
+
+        // Actionable notice for L1
         afterSave.push(() =>
           safeNotify(() =>
-            notifyChangesRequested(cfg.apiKey, targets, {
+            notifyUser(cfg.apiKey, {
+              userId: l1Id,
+              email: l1Email,
               actorName,
-              actorRole: "superadmin",
-              remark: changeRemark,
+              type: "final_returned_to_l1",
+              title: copy.finalReturnedToL1.title,
+              body: copy.finalReturnedToL1.body,
+              emailDetail: copy.finalReturnedToL1.emailDetail,
               recommendationId,
               actionId: notifyActionId,
-              displayCode: ref.displayCode,
-              detail: ref.detail,
-              headline: ref.headline,
             })
           )
         );
+
+        // FYI for assignee — they stay in the loop
+        afterSave.push(async () => {
+          let submitterId =
+            typeof meta.submitterId === "string"
+              ? meta.submitterId.trim()
+              : "";
+          let submitterEmail =
+            typeof meta.submitterEmail === "string"
+              ? meta.submitterEmail.trim()
+              : undefined;
+          if (!submitterId && submitterEmail) {
+            submitterId =
+              (await findUserIdByEmail(cfg.apiKey, submitterEmail)) || "";
+          }
+          if (!submitterId) return;
+          await safeNotify(() =>
+            notifyUser(cfg.apiKey, {
+              userId: submitterId,
+              email: submitterEmail,
+              actorName,
+              type: "publisher_returned_fyi",
+              title: copy.publisherReturnedFyi.title,
+              body: copy.publisherReturnedFyi.body,
+              emailDetail: copy.publisherReturnedFyi.emailDetail,
+              recommendationId,
+              actionId: notifyActionId,
+            })
+          );
+        });
       }
     } else {
       return NextResponse.json({ message: "Unknown action" }, { status: 400 });

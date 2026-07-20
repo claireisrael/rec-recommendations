@@ -38,7 +38,7 @@ export function PartnersList({
         {showLabel && (
           <span
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-md bg-black/35 px-2 py-0.5 font-bold uppercase tracking-[0.14em] text-white ring-1 ring-inset ring-white/30",
+              "inline-flex items-center gap-1.5 rounded-md bg-black/35 px-2 py-0.5 font-semibold uppercase tracking-[0.14em] text-white ring-1 ring-inset ring-white/30",
               size === "sm" ? "text-[10px]" : "text-xs"
             )}
           >
@@ -88,18 +88,18 @@ export function PartnersList({
   return (
     <div
       className={cn(
-        "rounded-xl border border-[rgba(5,70,83,0.08)] bg-white p-3",
+        "rounded-xl border border-[rgba(46, 158, 204,0.08)] bg-white p-3",
         className
       )}
     >
       <div className="mb-2.5 flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[rgba(5,70,83,0.08)] text-primary">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[rgba(46, 158, 204,0.08)] text-primary">
           <Users className="h-3.5 w-3.5" />
         </span>
         <div>
           <p
             className={cn(
-              "font-bold uppercase tracking-[0.12em] text-primary",
+              "font-semibold uppercase tracking-[0.12em] text-primary",
               size === "sm" ? "text-[10px]" : "text-xs"
             )}
           >

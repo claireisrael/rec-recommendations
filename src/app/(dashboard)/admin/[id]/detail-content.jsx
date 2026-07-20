@@ -238,11 +238,11 @@ export function AdminDetailPageContent() {
           </div>
 
           {isReviewMode && (
-            <section className="overflow-hidden rounded-2xl border border-[rgba(5,70,83,0.1)] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+            <section className="overflow-hidden rounded-2xl border border-[rgba(46, 158, 204,0.1)] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
               <div className="accent-bar h-[3px] w-full" />
               <div className="px-5 py-4 sm:px-6">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(5,70,83,0.08)] text-primary">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(46, 158, 204,0.08)] text-primary">
                     <BookOpenCheck className="h-4 w-4" />
                   </span>
                   <h2 className="text-base font-semibold tracking-tight text-primary">
@@ -267,9 +267,9 @@ export function AdminDetailPageContent() {
                   ].map((label, i) => (
                     <li
                       key={label}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-[rgba(5,70,83,0.1)] bg-[#f8fafb] px-2.5 py-1 text-[11px] font-medium text-primary"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-[rgba(46, 158, 204,0.1)] bg-[#f8fafb] px-2.5 py-1 text-[11px] font-medium text-primary"
                     >
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-white">
                         {i + 1}
                       </span>
                       {label}
@@ -280,13 +280,13 @@ export function AdminDetailPageContent() {
             </section>
           )}
 
-          <section className="relative overflow-hidden rounded-2xl border border-[rgba(5,70,83,0.1)] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+          <section className="relative overflow-hidden rounded-2xl border border-[rgba(46, 158, 204,0.1)] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
             <div className="accent-bar h-[3px] w-full" />
             <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6 sm:p-5">
               <div className="min-w-0 flex-1 space-y-2.5">
                 <div className="flex flex-wrap items-center gap-2">
                   {numberCode && <NumberCode code={numberCode} size="md" />}
-                  <span className="inline-flex items-center rounded-full border border-[rgba(5,70,83,0.12)] bg-[#f8f9fa] px-2.5 py-1 text-xs font-medium text-primary">
+                  <span className="inline-flex items-center rounded-full border border-[rgba(46, 158, 204,0.12)] bg-[#f8f9fa] px-2.5 py-1 text-xs font-medium text-primary">
                     <Calendar className="mr-1.5 h-3.5 w-3.5" />
                     {recommendation.year}
                   </span>
@@ -317,7 +317,7 @@ export function AdminDetailPageContent() {
                   </p>
                 )}
               </div>
-              <div className="flex shrink-0 flex-col items-center gap-1 self-start rounded-xl border border-[rgba(5,70,83,0.08)] bg-[#f8fafb] px-3 py-3">
+              <div className="flex shrink-0 flex-col items-center gap-1 self-start rounded-xl border border-[rgba(46, 158, 204,0.08)] bg-[#f8fafb] px-3 py-3">
                 <ScoreGauge score={overallScore} size="md" />
                 <p className="text-[11px] font-medium text-muted">
                   Overall score
@@ -330,7 +330,7 @@ export function AdminDetailPageContent() {
             <div className="space-y-4 lg:col-span-2">
               <div className="flex items-center gap-2">
                 <div className="h-5 w-1 rounded-full bg-secondary" />
-                <h2 className="text-lg font-bold text-primary">
+                <h2 className="text-lg font-semibold text-primary">
                   Actions to review &amp; score
                 </h2>
               </div>
@@ -347,7 +347,7 @@ export function AdminDetailPageContent() {
                       className={cn(
                         "group relative scroll-mt-24 overflow-hidden rounded-2xl border bg-white p-4 shadow-sm transition-shadow",
                         focused || awaitingYou
-                          ? "border-secondary/50 shadow-[0_10px_30px_rgba(255,184,3,0.15)]"
+                          ? "border-secondary/50 shadow-[0_10px_30px_rgba(239, 167, 79,0.15)]"
                           : "border-border hover:shadow-md"
                       )}
                     >
@@ -358,15 +358,15 @@ export function AdminDetailPageContent() {
                         }}
                       />
                       <div className="flex items-start gap-3 pl-2">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                           {i + 1}
                         </div>
                         <div className="min-w-0 flex-1 space-y-3">
                           <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
                               Action {i + 1}
                               {(focused || awaitingYou) && (
-                                <span className="ml-2 rounded bg-secondary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                                <span className="ml-2 rounded bg-secondary px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
                                   Your review
                                 </span>
                               )}
@@ -418,7 +418,7 @@ export function AdminDetailPageContent() {
               {canEdit && (
                 <Card className="overflow-hidden">
                   <div className="gradient-card-header px-5 py-3">
-                    <h3 className="text-sm font-bold text-white">
+                    <h3 className="text-sm font-semibold text-white">
                       Update Status
                     </h3>
                   </div>

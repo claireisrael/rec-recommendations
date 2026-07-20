@@ -94,7 +94,7 @@ export function AdminSidebar() {
         className={cn(
           "relative mx-2 flex items-center gap-3 rounded-lg px-4 py-3 text-[0.9rem] font-medium transition-all duration-200",
           active
-            ? "bg-white/20 text-white shadow-[inset_3px_0_0_0_#ffb803]"
+            ? "bg-white/20 text-white shadow-[inset_3px_0_0_0_#EFA74F]"
             : "text-white/90 hover:translate-x-0.5 hover:bg-white/10 hover:text-white"
         )}
       >
@@ -108,7 +108,7 @@ export function AdminSidebar() {
         <span className="min-w-0 flex-1 truncate">{label}</span>
         {showBadge && (
           <span
-            className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-bold tabular-nums text-white shadow-sm ring-2 ring-white/25"
+            className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-semibold tabular-nums text-white shadow-sm ring-2 ring-white/25"
             aria-label={`${badge} unread notifications`}
           >
             {badge > 99 ? "99+" : badge}
@@ -130,7 +130,7 @@ export function AdminSidebar() {
             <NrepLogo height={64} priority />
           </div>
           <div className="text-center">
-            <p className="text-base font-bold tracking-wide text-secondary">
+            <p className="text-base font-semibold tracking-wide text-secondary">
               REC Portal
             </p>
             <p className="mt-1 text-sm font-light text-white/65">
@@ -142,7 +142,7 @@ export function AdminSidebar() {
 
       <nav className="sidebar-nav-scroll relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden py-3 pr-1">
         <div className="mb-1 px-4 pb-2 pt-1">
-          <p className="flex items-center gap-2 text-[0.7rem] font-bold uppercase tracking-[0.1em] text-white/80">
+          <p className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.1em] text-white/80">
             <span className="h-2 w-2 rounded-full bg-secondary" />
             Core
           </p>
@@ -154,7 +154,7 @@ export function AdminSidebar() {
         </div>
 
         <div className="mb-1 mt-5 px-4 pb-2 pt-1">
-          <p className="flex items-center gap-2 text-[0.7rem] font-bold uppercase tracking-[0.1em] text-white/80">
+          <p className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.1em] text-white/80">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
             Links
           </p>
@@ -213,7 +213,7 @@ export function AdminSidebar() {
         >
           {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           {pendingReviews > 0 && (
-            <span className="absolute right-1 top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-4 text-white">
+            <span className="absolute right-1 top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-4 text-white">
               {pendingReviews > 99 ? "99+" : pendingReviews}
             </span>
           )}

@@ -10,7 +10,7 @@ export default function PublicError({ reset }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="text-center max-w-md">
-        <h2 className="text-2xl font-bold text-primary mb-2">
+        <h2 className="text-2xl font-semibold text-primary mb-2">
           Failed to load recommendations
         </h2>
         <p className="text-muted font-light mb-6">

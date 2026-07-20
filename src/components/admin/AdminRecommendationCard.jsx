@@ -65,7 +65,7 @@ export function AdminRecommendationCard({
               variant="outline"
               size="icon"
               title="View"
-              className="h-9 w-9 rounded-md border-[#0b7186] text-[#0b7186] hover:bg-[#0b7186]/10"
+              className="h-9 w-9 rounded-md border-[#4BB3D9] text-[#4BB3D9] hover:bg-[#4BB3D9]/10"
             >
               <Eye className="h-4 w-4" />
             </Button>
@@ -76,7 +76,7 @@ export function AdminRecommendationCard({
                 variant="outline"
                 size="icon"
                 title="Edit"
-                className="h-9 w-9 rounded-md border-[#2563eb] text-[#2563eb] hover:bg-[#2563eb]/10"
+                className="h-9 w-9 rounded-md border-[#EFA74F] text-[#EFA74F] hover:bg-[#EFA74F]/10"
               >
                 <Pencil className="h-4 w-4" />
               </Button>

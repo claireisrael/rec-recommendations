@@ -52,7 +52,7 @@ export function RecommendationCard({ recommendation, numberCode, onClick }) {
               Action
             </p>
             <div
-              className="relative space-y-2 overflow-hidden rounded-lg border border-[rgba(5,70,83,0.1)] px-3 py-2.5"
+              className="relative space-y-2 overflow-hidden rounded-lg border border-[rgba(46, 158, 204,0.1)] px-3 py-2.5"
               style={{ backgroundColor: getScoreBgColor(singleAction.scoreTier) }}
             >
               <span
@@ -77,7 +77,7 @@ export function RecommendationCard({ recommendation, numberCode, onClick }) {
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-[rgba(5,70,83,0.08)] bg-[#f8fafb] px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-[rgba(46, 158, 204,0.08)] bg-[#f8fafb] px-3 py-2.5">
             <div className="flex items-center gap-2 text-sm text-primary-dark">
               <ListChecks className="h-4 w-4 shrink-0 text-primary" />
               <span className="font-medium">{actionCount} actions</span>

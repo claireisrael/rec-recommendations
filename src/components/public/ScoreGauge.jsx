@@ -64,7 +64,7 @@ export function ScoreGauge({
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
-            className={cn("font-bold leading-none text-[#1f2937]", fontSize)}
+            className={cn("font-semibold leading-none text-[#1f2937]", fontSize)}
           >
             {score}
           </span>

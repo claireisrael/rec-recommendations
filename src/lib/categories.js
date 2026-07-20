@@ -27,16 +27,16 @@ export const CATEGORY_LABELS = {
 
 /** @type {Record<import("./categories").RecommendationCategory, { color: string, bg: string, border: string }>} */
 export const CATEGORY_COLORS = {
-  clean_cooking: { color: "#054653", bg: "#E0EEF0", border: "#054653" },
-  partnerships: { color: "#043b45", bg: "#D6E8EB", border: "#043b45" },
-  finance: { color: "#054653", bg: "#FFF8E6", border: "#FFB803" },
-  agri_energy: { color: "#0b7186", bg: "#E5F2F4", border: "#0b7186" },
-  research: { color: "#054653", bg: "#E8F4F6", border: "#0b7186" },
-  energy_access: { color: "#054653", bg: "#CFF0F4", border: "#0b7186" },
-  policy: { color: "#043b45", bg: "#E8F0F2", border: "#054653" },
-  training: { color: "#054653", bg: "#FFF8E6", border: "#FFB803" },
-  technology: { color: "#0b7186", bg: "#E5F2F4", border: "#FFB803" },
-  inclusion: { color: "#054653", bg: "#E0EEF0", border: "#e6a500" },
+  clean_cooking: { color: "#2E9ECC", bg: "#E8F6FB", border: "#2E9ECC" },
+  partnerships: { color: "#357C9D", bg: "#D6EEF7", border: "#357C9D" },
+  finance: { color: "#EFA74F", bg: "#FFF6EB", border: "#EFA74F" },
+  agri_energy: { color: "#2E9ECC", bg: "#E8F6FB", border: "#4BB3D9" },
+  research: { color: "#357C9D", bg: "#D6EEF7", border: "#4BB3D9" },
+  energy_access: { color: "#2E9ECC", bg: "#C5E8F5", border: "#4BB3D9" },
+  policy: { color: "#357C9D", bg: "#E8F6FB", border: "#2E9ECC" },
+  training: { color: "#EFA74F", bg: "#FFF6EB", border: "#EFA74F" },
+  technology: { color: "#E08E2A", bg: "#FFEED8", border: "#EFA74F" },
+  inclusion: { color: "#2E9ECC", bg: "#E8F6FB", border: "#E08E2A" },
 };
 
 /** @type {import("./categories").RecommendationCategory} */

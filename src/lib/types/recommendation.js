@@ -18,7 +18,7 @@ export const STATUS_LABELS = {
 /** Clear status chips — readable on white tables (HR-style). */
 /** @type {Record<RecommendationStatus, { color: string, bg: string, border: string }>} */
 export const STATUS_COLORS = {
-  planned: { color: "#054653", bg: "rgba(5,70,83,0.08)", border: "rgba(5,70,83,0.18)" },
+  planned: { color: "#2E9ECC", bg: "rgba(46, 158, 204,0.08)", border: "rgba(46, 158, 204,0.18)" },
   in_progress: { color: "#92400e", bg: "#fef3c7", border: "#fcd34d" },
   completed: { color: "#166534", bg: "#dcfce7", border: "#86efac" },
 };

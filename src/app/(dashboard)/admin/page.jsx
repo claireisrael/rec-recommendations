@@ -56,7 +56,7 @@ export default function AdminDashboardPage() {
         <div className="space-y-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-[1.5rem] font-bold tracking-tight text-foreground sm:text-[1.75rem]">
+              <h2 className="text-[1.5rem] font-semibold tracking-tight text-foreground sm:text-[1.75rem]">
                 Recommendations
               </h2>
               <p className="mt-0.5 text-sm font-medium text-muted">
@@ -65,7 +65,7 @@ export default function AdminDashboardPage() {
             </div>
             {showCreate && (
               <Link href="/admin/new">
-                <Button className="rounded-xl shadow-[0_4px_12px_rgba(5,70,83,0.2)]">
+                <Button className="rounded-xl shadow-[0_4px_12px_rgba(46, 158, 204,0.2)]">
                   <Plus className="h-4 w-4" />
                   New Recommendation
                 </Button>

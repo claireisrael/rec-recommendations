@@ -241,7 +241,7 @@ export function AdminTable({
         }}
       />
 
-      <div className="rounded-2xl border border-[#dce6e9]/70 bg-white/80 p-3.5 shadow-[0_1px_6px_rgba(5,70,83,0.03)] sm:p-4">
+      <div className="rounded-2xl border border-[#dce6e9]/70 bg-white/80 p-3.5 shadow-[0_1px_6px_rgba(46, 158, 204,0.03)] sm:p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="grid min-w-0 flex-1 grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
             <Input
@@ -397,7 +397,7 @@ export function AdminTable({
                 return (
                 <tr
                   key={rec.$id}
-                  className="border-b border-[#f1f3f4] last:border-0 transition-colors hover:bg-[rgba(5,70,83,0.02)]"
+                  className="border-b border-[#f1f3f4] last:border-0 transition-colors hover:bg-[rgba(46, 158, 204,0.02)]"
                 >
                   <td className="whitespace-nowrap px-4 py-4 align-middle">
                     {code ? (
@@ -448,7 +448,7 @@ export function AdminTable({
                           variant="outline"
                           size="icon"
                           title="View"
-                          className="h-9 w-9 rounded-md border-[#0b7186] text-[#0b7186] hover:bg-[#0b7186]/10"
+                          className="h-9 w-9 rounded-md border-[#4BB3D9] text-[#4BB3D9] hover:bg-[#4BB3D9]/10"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -459,7 +459,7 @@ export function AdminTable({
                             variant="outline"
                             size="icon"
                             title="Edit"
-                            className="h-9 w-9 rounded-md border-[#2563eb] text-[#2563eb] hover:bg-[#2563eb]/10"
+                            className="h-9 w-9 rounded-md border-[#EFA74F] text-[#EFA74F] hover:bg-[#EFA74F]/10"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>

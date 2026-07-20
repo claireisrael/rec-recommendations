@@ -8,6 +8,7 @@ import { getAccount } from "@/lib/appwrite/client";
 import {
   listNotificationsForUser,
   markNotificationsRead,
+  dismissActionNotificationThread,
 } from "@/lib/appwrite/notifications";
 import { useRecommendations } from "@/lib/hooks/useRecommendations";
 import { buildRecommendationNumbering } from "@/lib/numbering";
@@ -23,12 +24,20 @@ import {
   MessageSquareWarning,
   ShieldCheck,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  getFinalPublisherDisplayName,
+  isFinalPublisher,
+} from "@/lib/roles";
+import { parseNotificationActor } from "@/lib/notification-actor";
+import { toast } from "sonner";
 
 /** @typedef {'action' | 'progress' | 'success' | 'alert' | 'neutral'} Tone */
 
-const TYPE_META = {
+/** @type {Record<string, { label: string; icon: typeof Bell; actionable: boolean; tone: Tone }>} */
+const TYPE_META_BASE = {
   l1_review_requested: {
     label: "Needs your L1 review",
     icon: ClipboardCheck,
@@ -41,6 +50,18 @@ const TYPE_META = {
     actionable: true,
     tone: "action",
   },
+  final_returned_to_l1: {
+    label: "Final approver returned to you",
+    icon: ShieldCheck,
+    actionable: true,
+    tone: "alert",
+  },
+  publisher_returned_fyi: {
+    label: "Final approver returned to L1",
+    icon: ShieldCheck,
+    actionable: false,
+    tone: "progress",
+  },
   superadmin_review_requested: {
     label: "Final review & publication",
     icon: ShieldCheck,
@@ -48,7 +69,7 @@ const TYPE_META = {
     tone: "action",
   },
   action_reviewed: {
-    label: "Pending Superadmin publication",
+    label: "Pending final publication",
     icon: ShieldCheck,
     actionable: false,
     tone: "progress",
@@ -79,10 +100,25 @@ const TYPE_META = {
   },
 };
 
+const TYPE_META = (() => {
+  const publisher = getFinalPublisherDisplayName();
+  return {
+    ...TYPE_META_BASE,
+    superadmin_review_requested: {
+      ...TYPE_META_BASE.superadmin_review_requested,
+      label: `Final review (${publisher})`,
+    },
+    action_reviewed: {
+      ...TYPE_META_BASE.action_reviewed,
+      label: `With ${publisher} for publication`,
+    },
+  };
+})();
+
 /** Soft washed card styles — red reserved for unread/new notification cues. */
 const TONE_STYLES = {
   action: {
-    card: "border-[#dce6e9] bg-white shadow-[0_2px_12px_rgba(5,70,83,0.05)]",
+    card: "border-[#dce6e9] bg-white shadow-[0_2px_12px_rgba(46, 158, 204,0.05)]",
     bar: "bg-primary/80",
     icon: "bg-[#e8f3f5] text-primary",
     badge: "bg-[#e8f3f5] text-primary",
@@ -90,7 +126,7 @@ const TONE_STYLES = {
     calloutLabel: "text-primary/80",
   },
   progress: {
-    card: "border-[#dce6e9] bg-white shadow-[0_2px_12px_rgba(5,70,83,0.05)]",
+    card: "border-[#dce6e9] bg-white shadow-[0_2px_12px_rgba(46, 158, 204,0.05)]",
     bar: "bg-primary/60",
     icon: "bg-[#e8f3f5] text-primary",
     badge: "bg-[#e8f3f5] text-primary",
@@ -98,7 +134,7 @@ const TONE_STYLES = {
     calloutLabel: "text-primary/80",
   },
   success: {
-    card: "border-[#dce6e9] bg-white shadow-[0_2px_12px_rgba(5,70,83,0.05)]",
+    card: "border-[#dce6e9] bg-white shadow-[0_2px_12px_rgba(46, 158, 204,0.05)]",
     bar: "bg-emerald-500/70",
     icon: "bg-emerald-50 text-emerald-700",
     badge: "bg-emerald-50 text-emerald-700",
@@ -106,7 +142,7 @@ const TONE_STYLES = {
     calloutLabel: "text-emerald-800",
   },
   alert: {
-    card: "border-[#dce6e9] bg-white shadow-[0_2px_12px_rgba(5,70,83,0.05)]",
+    card: "border-[#dce6e9] bg-white shadow-[0_2px_12px_rgba(46, 158, 204,0.05)]",
     bar: "bg-rose-500/80",
     icon: "bg-rose-50 text-rose-600",
     badge: "bg-rose-50 text-rose-700",
@@ -114,7 +150,7 @@ const TONE_STYLES = {
     calloutLabel: "text-rose-800",
   },
   neutral: {
-    card: "border-[#dce6e9] bg-white shadow-[0_2px_12px_rgba(5,70,83,0.05)]",
+    card: "border-[#dce6e9] bg-white shadow-[0_2px_12px_rgba(46, 158, 204,0.05)]",
     bar: "bg-primary/50",
     icon: "bg-[#e8f3f5] text-primary",
     badge: "bg-[#eef3f5] text-primary",
@@ -122,14 +158,6 @@ const TONE_STYLES = {
     calloutLabel: "text-primary/80",
   },
 };
-
-/** @param {string} body @returns {string | null} */
-function extractAssigner(body) {
-  const m = body.match(
-    /^(.+?)\s+(assigned you|asked you|finished|reviewed|approved|published|asked for)/i
-  );
-  return m?.[1]?.trim() || null;
-}
 
 /**
  * @param {{
@@ -139,67 +167,100 @@ function extractAssigner(body) {
  *   categoryLabel?: string,
  *   year?: number,
  *   actionText?: string,
- *   actionNo?: number,
+ *   viewerIsFinalPublisher?: boolean,
  * }} input
  * @returns {{ headline: string, detail: string, spotlight?: string }}
  */
 function buildClearMessage(input) {
-  const who = extractAssigner(input.body) || "A colleague";
+  const parsed = parseNotificationActor(input.body);
+  const who = parsed.actorName;
   const ref = input.displayCode
     ? `${input.displayCode}${input.categoryLabel ? ` · ${input.categoryLabel}` : ""}${
         input.year ? ` (${input.year})` : ""
       }`
     : "a REC recommendation";
+  const publisher = getFinalPublisherDisplayName();
+  const publisherLabel = input.viewerIsFinalPublisher ? "you" : publisher;
 
   switch (input.type) {
     case "l1_review_requested":
       return {
-        headline: `${who} asked you to review an action`,
-        detail: input.actionText
-          ? `Open ${ref}, then score Action ${input.actionNo ?? ""}.`
-          : `Open ${ref} and score the assigned action.`,
+        headline: who
+          ? `${who} asked you to review an action`
+          : "You have an action to review",
+        detail: ref,
         spotlight: input.actionText,
       };
     case "feedback_responded":
       return {
-        headline: `${who} responded to your feedback`,
-        detail: `They updated the action and resent it for your Level 1 review. Open ${ref} to continue.`,
+        headline: who
+          ? `${who} responded to your feedback`
+          : "Feedback was addressed",
+        detail: ref,
+        spotlight: input.actionText,
+      };
+    case "final_returned_to_l1":
+      return {
+        headline: who
+          ? `${who} returned this action to you`
+          : "Returned to you",
+        detail: ref,
+        spotlight: input.actionText,
+      };
+    case "publisher_returned_fyi":
+      return {
+        headline: who
+          ? `${who} returned your action to Level 1`
+          : "Returned to Level 1",
+        detail: ref,
         spotlight: input.actionText,
       };
     case "superadmin_review_requested":
       return {
-        headline: `${who} sent an action for Superadmin publication`,
-        detail: `Set the final score and publish for ${ref}.`,
+        headline: who
+          ? `${who} sent an action to ${publisherLabel}`
+          : input.viewerIsFinalPublisher
+            ? "An action is ready for you"
+            : `Ready for ${publisher}`,
+        detail: ref,
         spotlight: input.actionText,
       };
     case "action_reviewed":
       return {
-        headline: "Your action is with Superadmin for publication",
-        detail: `${who} sent it on. ${ref} is awaiting final review and publication.`,
-        spotlight: `Final stage · ${ref}`,
+        headline: input.viewerIsFinalPublisher
+          ? "Ready for your publication review"
+          : `With ${publisher} for publication`,
+        detail: ref,
+        spotlight: input.actionText || ref,
       };
     case "l1_edited_and_forwarded":
       return {
-        headline: `${who} (your Level 1 approver) edited your action`,
-        detail: `They updated it and sent ${ref} to Superadmin for final review and publication — without bouncing it back to you. Open to see what changed.`,
+        headline: who
+          ? `${who} edited your action`
+          : "Your Level 1 approver edited your action",
+        detail: `Sent to ${publisherLabel} · ${ref}`,
         spotlight: input.actionText || ref,
       };
     case "action_published":
       return {
-        headline: `${who} published your action`,
-        detail: `${ref} is now live on the public portal.`,
+        headline: who
+          ? `${who} published your action`
+          : "Your action was published",
+        detail: ref,
         spotlight: ref,
       };
     case "changes_requested":
       return {
-        headline: `${who} sent this action back to you`,
-        detail: `Update ${ref}, then resend it to Level 1 for review.`,
+        headline: who
+          ? `${who} sent this action back to you`
+          : "This action was sent back to you",
+        detail: ref,
         spotlight: input.actionText,
       };
     default:
       return {
         headline: TYPE_META[input.type]?.label || "Notification",
-        detail: input.body
+        detail: parsed.body
           .replace(/\b[0-9a-f]{20}\b/gi, ref)
           .replace(/under recommendation\s+this recommendation/gi, `under ${ref}`)
           .replace(/recommendation this recommendation/gi, ref),
@@ -212,6 +273,7 @@ function buildClearMessage(input) {
 const ACTIONABLE_TYPES = new Set([
   "l1_review_requested",
   "feedback_responded",
+  "final_returned_to_l1",
   "superadmin_review_requested",
   "changes_requested",
   "l1_edited_and_forwarded",
@@ -239,8 +301,11 @@ export default function ReviewsInboxPage() {
     /** @type {import("@/lib/appwrite/notifications").AppNotification[]} */ ([])
   );
   const [loading, setLoading] = useState(true);
+  const [deletingKey, setDeletingKey] = useState(/** @type {string | null} */ (null));
   const { recommendations } = useRecommendations();
   const expiryPass = useRef(false);
+  const viewerIsFinalPublisher = isFinalPublisher(user?.email);
+  const viewerCanDismissThread = Boolean(user);
 
   const numbering = useMemo(
     () => buildRecommendationNumbering(recommendations),
@@ -257,13 +322,25 @@ export default function ReviewsInboxPage() {
     [items]
   );
 
-  /** Unread, minus status updates older than 15 minutes. */
-  const queueItems = useMemo(
-    () =>
-      items.filter(
-        (n) => !n.read && (ACTIONABLE_TYPES.has(n.type) || !isExpiredStatusUpdate(n))
-      ),
+  /** Unread work that still needs action, then the remaining trail (incl. read). */
+  const actionNeeded = useMemo(
+    () => items.filter((n) => !n.read && ACTIONABLE_TYPES.has(n.type)),
     [items]
+  );
+  const recentTrail = useMemo(() => {
+    const actionIds = new Set(actionNeeded.map((n) => n.$id).filter(Boolean));
+    return items.filter((n) => {
+      if (n.$id && actionIds.has(n.$id)) return false;
+      // Published cards never stay — workflow is closed for that action.
+      if (n.type === "action_published") return false;
+      // Status FYIs drop after TTL whether read or unread.
+      if (isExpiredStatusUpdate(n)) return false;
+      return true;
+    });
+  }, [items, actionNeeded]);
+  const queueItems = useMemo(
+    () => [...actionNeeded, ...recentTrail],
+    [actionNeeded, recentTrail]
   );
 
   const load = useCallback(async () => {
@@ -272,8 +349,9 @@ export default function ReviewsInboxPage() {
     expiryPass.current = false;
     try {
       const jwt = await getAccount().createJWT();
-      const list = await listNotificationsForUser(jwt.jwt, user.$id);
-      setItems(list.filter((n) => !n.read));
+      const list = await listNotificationsForUser(jwt.jwt);
+      // Keep the full trail (read + unread) so L1 / assignees can see the loop.
+      setItems(list);
     } catch {
       setItems([]);
     } finally {
@@ -306,7 +384,9 @@ export default function ReviewsInboxPage() {
         await markNotificationsRead(jwt.jwt, expiredIds);
         if (cancelled) return;
         setItems((prev) =>
-          prev.filter((n) => !expiredIds.includes(n.$id || ""))
+          prev.map((n) =>
+            expiredIds.includes(n.$id || "") ? { ...n, read: true } : n
+          )
         );
       } catch {
         expiryPass.current = false;
@@ -334,7 +414,9 @@ export default function ReviewsInboxPage() {
           const jwt = await getAccount().createJWT();
           await markNotificationsRead(jwt.jwt, expiredIds);
           setItems((prev) =>
-            prev.filter((n) => !expiredIds.includes(n.$id || ""))
+            prev.map((n) =>
+              expiredIds.includes(n.$id || "") ? { ...n, read: true } : n
+            )
           );
         } catch {
           /* keep showing until next pass */
@@ -350,10 +432,47 @@ export default function ReviewsInboxPage() {
     router.push(href);
   };
 
+  /**
+   * @param {{ recommendationId: string; actionId: string; notificationId: string }} input
+   */
+  const dismissActionThread = async (input) => {
+    if (!user || !viewerCanDismissThread) return;
+    const key = input.notificationId || `${input.recommendationId}:${input.actionId}`;
+    if (deletingKey === key) return;
+    setDeletingKey(key);
+    try {
+      const jwt = await getAccount().createJWT();
+      const deleted = await dismissActionNotificationThread(jwt.jwt, input);
+      if (deleted > 0) {
+        setItems((prev) => {
+          if (viewerIsFinalPublisher) {
+            // Publisher wipe: drop every card for that action.
+            return prev.filter(
+              (n) =>
+                !(
+                  String(n.recommendationId || "") === input.recommendationId &&
+                  String(n.actionId || "") === input.actionId
+                )
+            );
+          }
+          // L1: remove only the card they clicked.
+          return prev.filter((n) => String(n.$id || "") !== input.notificationId);
+        });
+        toast.success("Notification cleared");
+      } else {
+        toast.error("Could not clear this notification");
+      }
+    } catch {
+      toast.error("Could not clear this notification");
+    } finally {
+      setDeletingKey(null);
+    }
+  };
+
   return (
     <AdminPageContent>
       <div className="space-y-8">
-        <section className="relative overflow-hidden rounded-2xl border border-[#dce6e9] bg-white shadow-[0_2px_12px_rgba(5,70,83,0.05)]">
+        <section className="relative overflow-hidden rounded-2xl border border-[#dce6e9] bg-white shadow-[0_2px_12px_rgba(46, 158, 204,0.05)]">
           <div className="h-1 w-full bg-primary/70" />
           <div className="flex flex-col gap-5 px-5 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-7">
             <div className="flex items-start gap-3">
@@ -367,30 +486,26 @@ export default function ReviewsInboxPage() {
                 </Button>
               </Link>
               <div>
-                <p className="mb-1.5 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-rose-600">
+                <p className="mb-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-600">
                   <Bell className="h-3.5 w-3.5" />
                   Inbox
                 </p>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-[1.75rem]">
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">
                   Review inbox
                 </h1>
-                <p className="mt-1 max-w-xl text-sm font-medium text-muted">
-                  Review requests stay until you finish them. Status updates
-                  stay for 15 minutes, then clear.
-                </p>
               </div>
             </div>
 
             {!loading && (
               <div className="min-w-[8.5rem] rounded-2xl border border-[#e5e9ec] bg-white px-4 py-3.5 text-center shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-                <p className="text-4xl font-extrabold tabular-nums leading-none text-rose-600">
+                <p className="text-4xl font-semibold tabular-nums leading-none text-rose-600">
                   {queueItems.length}
                 </p>
-                <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">
-                  {queueItems.length > 0 ? "Unread" : "Clear"}
+                <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b7280]">
+                  {queueItems.length > 0 ? "In inbox" : "Clear"}
                 </p>
                 <p className="mt-0.5 text-[11px] font-medium text-[#9ca3af]">
-                  {pendingCount} need review
+                  {pendingCount} need action
                 </p>
               </div>
             )}
@@ -411,7 +526,7 @@ export default function ReviewsInboxPage() {
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#e8f3f5] text-primary">
               <CheckCircle2 className="h-6 w-6" />
             </div>
-            <p className="text-xl font-bold text-foreground">
+            <p className="text-xl font-semibold text-foreground">
               Nothing waiting right now
             </p>
             <p className="mx-auto mt-1.5 max-w-sm text-sm font-medium text-muted">
@@ -448,7 +563,7 @@ export default function ReviewsInboxPage() {
                     ? `${action.text.slice(0, 139)}…`
                     : action.text
                   : undefined,
-                actionNo: actionIndex >= 0 ? actionIndex + 1 : undefined,
+                viewerIsFinalPublisher: viewerIsFinalPublisher,
               });
               const href = n.recommendationId
                 ? `/admin/${n.recommendationId}${
@@ -458,17 +573,42 @@ export default function ReviewsInboxPage() {
                   }`
                 : null;
               const isProgress = n.type === "action_reviewed";
+              const canClearThread =
+                viewerCanDismissThread &&
+                Boolean(n.$id && n.recommendationId && n.actionId);
+              const threadKey = canClearThread && n.$id ? String(n.$id) : null;
+              const clearing = threadKey != null && deletingKey === threadKey;
 
               return (
                 <li
                   key={n.$id}
                   className={cn(
-                    "group overflow-hidden rounded-2xl border transition-colors hover:bg-[#fafcfc]",
+                    "group relative overflow-hidden rounded-2xl border transition-colors hover:bg-[#fafcfc]",
                     tone.card,
                     !n.read && "border-l-[3px] border-l-red-400"
                   )}
                 >
                   <div className={cn("h-[3px] w-full", tone.bar)} />
+                  {canClearThread && (
+                    <button
+                      type="button"
+                      title="Clear notification"
+                      aria-label="Clear notification"
+                      disabled={clearing}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        void dismissActionThread({
+                          recommendationId: String(n.recommendationId),
+                          actionId: String(n.actionId),
+                          notificationId: String(n.$id),
+                        });
+                      }}
+                      className="absolute right-2.5 top-3 z-10 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted/70 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:opacity-40"
+                    >
+                      <Trash2 className="h-3 w-3" strokeWidth={2} />
+                    </button>
+                  )}
                   <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-stretch sm:justify-between sm:p-5">
                     <div className="flex min-w-0 flex-1 gap-3.5">
                       <div
@@ -479,11 +619,11 @@ export default function ReviewsInboxPage() {
                       >
                         <Icon className="h-5 w-5" strokeWidth={1.75} />
                       </div>
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 pr-6">
                         <div className="flex flex-wrap items-center gap-2">
                           <span
                             className={cn(
-                              "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                              "rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
                               tone.badge
                             )}
                           >
@@ -497,13 +637,13 @@ export default function ReviewsInboxPage() {
                             </span>
                           )}
                           {!n.read && (
-                            <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                            <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                               New
                             </span>
                           )}
                         </div>
 
-                        <p className="mt-2.5 text-lg font-bold leading-snug text-foreground sm:text-xl">
+                        <p className="mt-2.5 text-lg font-semibold leading-snug text-foreground sm:text-xl">
                           {copy.headline}
                         </p>
 
@@ -522,7 +662,7 @@ export default function ReviewsInboxPage() {
                           >
                             <p
                               className={cn(
-                                "text-[10px] font-bold uppercase tracking-[0.12em]",
+                                "text-[10px] font-semibold uppercase tracking-[0.12em]",
                                 tone.calloutLabel
                               )}
                             >

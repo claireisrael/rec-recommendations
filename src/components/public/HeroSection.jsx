@@ -43,13 +43,13 @@ export function HeroSection({ stats }) {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/12 px-4 py-1.5 mb-6 backdrop-blur-sm">
-            <span className="text-secondary font-bold text-sm">REC</span>
+            <span className="text-secondary font-semibold text-sm">REC</span>
             <span className="h-3 w-px bg-white/25" aria-hidden />
             <span className="text-white/90 text-sm font-light">
               Renewable Energy Conference
             </span>
           </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 tracking-tight text-white drop-shadow-sm">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold mb-4 tracking-tight text-white drop-shadow-sm">
             Recommendations &amp; Actions
           </h1>
           <p className="text-lg md:text-xl font-light text-white/85 max-w-2xl mx-auto">
@@ -65,7 +65,7 @@ export function HeroSection({ stats }) {
               className="rounded-xl border border-white/18 bg-white/10 p-4 text-center backdrop-blur-sm transition-colors hover:bg-white/14"
             >
               <Icon className="h-5 w-5 mx-auto mb-2 text-secondary" />
-              <div className="text-2xl md:text-3xl font-bold">{value}</div>
+              <div className="text-2xl md:text-3xl font-semibold">{value}</div>
               <div className="text-sm font-light text-white/78 mt-1">
                 {label}
               </div>

@@ -28,7 +28,7 @@ export function ConfirmDeleteDialog({
         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
           <Trash2 className="h-6 w-6" />
         </div>
-        <h2 className="text-xl font-bold text-primary pr-8">{title}</h2>
+        <h2 className="text-xl font-semibold text-primary pr-8">{title}</h2>
         <p className="mt-2 text-sm font-light leading-relaxed text-muted">
           {description}
         </p>

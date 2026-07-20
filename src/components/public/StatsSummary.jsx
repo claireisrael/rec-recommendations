@@ -19,7 +19,7 @@ export function StatsSummary({ stats }) {
       icon: FileText,
       label: "Recommendations",
       content: (
-        <span className="text-3xl font-bold text-primary">
+        <span className="text-3xl font-semibold text-primary">
           {stats.totalRecommendations}
         </span>
       ),
@@ -29,7 +29,7 @@ export function StatsSummary({ stats }) {
       icon: Users,
       label: "Action Implementation Partners",
       content: (
-        <span className="text-3xl font-bold text-primary">
+        <span className="text-3xl font-semibold text-primary">
           {stats.totalActionPartners}
         </span>
       ),

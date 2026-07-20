@@ -70,10 +70,10 @@ function LoginForm() {
 
   return (
     <div className="flex h-full w-full max-w-[440px] mx-auto flex-col">
-      <div className="login-card flex h-full min-h-0 flex-col bg-white/94 backdrop-blur-[2px] rounded-2xl shadow-[0_8px_40px_rgba(11,113,134,0.1)] border border-white/70 px-8 py-8 lg:px-10 lg:py-10">
+      <div className="login-card flex h-full min-h-0 flex-col bg-white/94 backdrop-blur-[2px] rounded-2xl shadow-[0_8px_40px_rgba(75, 179, 217,0.1)] border border-white/70 px-8 py-8 lg:px-10 lg:py-10">
         <div className="flex flex-col items-center text-center shrink-0">
           <NrepLogo height={72} priority className="mb-6" />
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight">
             Sign In
           </h1>
           <p className="text-[15px] text-muted mt-2 font-normal">

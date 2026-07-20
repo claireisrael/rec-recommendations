@@ -1,8 +1,4 @@
-import { Inter } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
 
-/** Landing body text — Inter, matching NREP-HR-project. */
-export const landingFont = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-});
+/** Landing body text — Geist Sans. */
+export const landingFont = GeistSans;

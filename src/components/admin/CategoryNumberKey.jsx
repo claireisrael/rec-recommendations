@@ -68,7 +68,7 @@ export function CategoryNumberKey({
         );
 
         const base =
-          "relative flex min-w-[10.5rem] shrink-0 items-center gap-2.5 overflow-hidden rounded-[0.875rem] border border-[rgba(5,70,83,0.06)] bg-white/95 px-3.5 py-3 pl-4 shadow-[0_2px_10px_rgba(0,0,0,0.04)] backdrop-blur transition-all duration-200";
+          "relative flex min-w-[10.5rem] shrink-0 items-center gap-2.5 overflow-hidden rounded-[0.875rem] border border-[rgba(46, 158, 204,0.06)] bg-white/95 px-3.5 py-3 pl-4 shadow-[0_2px_10px_rgba(0,0,0,0.04)] backdrop-blur transition-all duration-200";
 
         if (!interactive) {
           return (
@@ -86,7 +86,7 @@ export function CategoryNumberKey({
             className={cn(
               base,
               "text-left hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)]",
-              selected && "border-[rgba(5,70,83,0.14)] bg-[#f8fafb]"
+              selected && "border-[rgba(46, 158, 204,0.14)] bg-[#f8fafb]"
             )}
           >
             {content}

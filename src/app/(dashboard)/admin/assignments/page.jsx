@@ -58,7 +58,7 @@ export default function AssignmentsPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-primary">
+            <h1 className="text-2xl font-semibold tracking-tight text-primary">
               Assignments
             </h1>
             <p className="mt-0.5 text-sm text-muted">
@@ -67,10 +67,10 @@ export default function AssignmentsPage() {
           </div>
         </div>
 
-        <section className="overflow-hidden rounded-2xl border border-[rgba(5,70,83,0.1)] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+        <section className="overflow-hidden rounded-2xl border border-[rgba(46, 158, 204,0.1)] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
           <div className="accent-bar h-[3px] w-full" />
-          <div className="flex items-center gap-2 border-b border-[rgba(5,70,83,0.06)] px-5 py-3.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(5,70,83,0.08)] text-primary">
+          <div className="flex items-center gap-2 border-b border-[rgba(46, 158, 204,0.06)] px-5 py-3.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(46, 158, 204,0.08)] text-primary">
               <UserRound className="h-4 w-4" />
             </span>
             <h2 className="text-base font-semibold text-primary">
@@ -88,7 +88,7 @@ export default function AssignmentsPage() {
                   <li key={section}>
                     <Link
                       href={topicHref(section)}
-                      className="group flex items-center justify-between gap-3 rounded-xl border border-[rgba(5,70,83,0.08)] bg-[#f8fafb] px-4 py-3.5 transition-colors hover:border-primary/25 hover:bg-white"
+                      className="group flex items-center justify-between gap-3 rounded-xl border border-[rgba(46, 158, 204,0.08)] bg-[#f8fafb] px-4 py-3.5 transition-colors hover:border-primary/25 hover:bg-white"
                     >
                       <div className="min-w-0">
                         <NumberCode code={section} size="md" />
@@ -114,7 +114,7 @@ export default function AssignmentsPage() {
         </section>
 
         {myL1 && (
-          <section className="overflow-hidden rounded-2xl border border-[rgba(5,70,83,0.1)] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+          <section className="overflow-hidden rounded-2xl border border-[rgba(46, 158, 204,0.1)] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
             <div className="accent-bar h-[3px] w-full" />
             <div className="px-5 py-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
@@ -123,7 +123,7 @@ export default function AssignmentsPage() {
               <h2 className="mt-1 text-base font-semibold text-primary">
                 Your L1 approver
               </h2>
-              <div className="mt-3 rounded-xl border border-[rgba(5,70,83,0.08)] bg-[#f8fafb] px-4 py-3.5">
+              <div className="mt-3 rounded-xl border border-[rgba(46, 158, 204,0.08)] bg-[#f8fafb] px-4 py-3.5">
                 <p className="text-sm font-semibold text-[#1f2937]">
                   {myL1.name}
                 </p>
@@ -140,7 +140,7 @@ export default function AssignmentsPage() {
 
         <section className="space-y-3">
           <h2 className="text-base font-semibold text-primary">Team roster</h2>
-          <ul className="overflow-hidden divide-y divide-[rgba(5,70,83,0.06)] rounded-2xl border border-[rgba(5,70,83,0.1)] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+          <ul className="overflow-hidden divide-y divide-[rgba(46, 158, 204,0.06)] rounded-2xl border border-[rgba(46, 158, 204,0.1)] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
             {RECOMMENDATION_ITEM_ASSIGNEES.map((a) => {
               const mine =
                 (user?.email || "").trim().toLowerCase() ===
@@ -148,14 +148,14 @@ export default function AssignmentsPage() {
               return (
                 <li
                   key={a.email}
-                  className={mine ? "bg-[rgba(5,70,83,0.04)]" : "bg-white"}
+                  className={mine ? "bg-[rgba(46, 158, 204,0.04)]" : "bg-white"}
                 >
                   <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-[12rem]">
                       <p className="font-semibold text-[#1f2937]">
                         {a.name}
                         {mine ? (
-                          <span className="ml-2 rounded-md bg-[rgba(5,70,83,0.08)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                          <span className="ml-2 rounded-md bg-[rgba(46, 158, 204,0.08)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
                             You
                           </span>
                         ) : null}
@@ -169,7 +169,7 @@ export default function AssignmentsPage() {
                         <li key={s}>
                           <Link
                             href={topicHref(s)}
-                            className="inline-flex items-center gap-2 rounded-lg border border-[rgba(5,70,83,0.1)] bg-white px-3 py-2 text-sm font-medium text-[#1f2937] transition-colors hover:border-primary/30 hover:bg-[#f8fafb]"
+                            className="inline-flex items-center gap-2 rounded-lg border border-[rgba(46, 158, 204,0.1)] bg-white px-3 py-2 text-sm font-medium text-[#1f2937] transition-colors hover:border-primary/30 hover:bg-[#f8fafb]"
                           >
                             <NumberCode code={s} size="sm" />
                             <span>{topicLabel(s)}</span>
@@ -194,7 +194,7 @@ export default function AssignmentsPage() {
                 <li key={row.category}>
                   <Link
                     href={`/admin?category=${row.category}`}
-                    className="inline-flex items-center gap-2 rounded-lg border border-dashed border-[rgba(5,70,83,0.15)] bg-white px-3 py-2 text-sm text-muted transition-colors hover:border-primary/40 hover:text-primary"
+                    className="inline-flex items-center gap-2 rounded-lg border border-dashed border-[rgba(46, 158, 204,0.15)] bg-white px-3 py-2 text-sm text-muted transition-colors hover:border-primary/40 hover:text-primary"
                   >
                     <NumberCode code={row.code} size="sm" />
                     {row.label}
